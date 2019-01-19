@@ -3,7 +3,7 @@ from sklearn.linear_model import LinearRegression
 
 class myAgent:
 
-    def __init__(self,epsilon=1,num_actions=None,state_size = 400,env = 'Breakout-v0',encoder=None):
+    def __init__(self,epsilon=1,num_actions=None,state_size = 400,env = 'Breakout-v0',encoder=None,decoder=None,CAE=None):
         
         if(num_actions==None):
             self.num_actions = 4
@@ -11,18 +11,26 @@ class myAgent:
             self.num_actions = num_actions
             
         self.Q = []
+        self.CAE_loss = 0
 
-        for i in range(num_actions):
+        for i in range(num_actions,):
             self.Q.append( LinearRegression() )
     
     def create_encoder(num_samples):
-        self.encoder = ConvAE(num_samples,self.env)
-        return self.encoder
+        self.CAE, self.encoder, self.decoder, self.CAE_loss = ConvAE(num_samples,self.env,self)
+        return self.encoder, self.CAE_loss
 
 
     def load_encoder():
-        self.encoder = tf.keras.models.load_model( os.getcwd()+'/encoder.h5' )
+        self.CAE = tf.keras.models.load_model( os.getcwd()+'/CAE_', env ,'_.h5' )
+        self.encoder = tf.keras.models.load_model( os.getcwd()+'/encoder', env ,'_.h5' )
+        self.decoder = tf.keras.models.load_model( os.getcwd()+'/decoder_', env ,'_.h5' )
         return self.encoder
+
+    def save_encoder(self.CAE,self.encoder,self.decoder):
+        CAE.save('CAE_', env , '_.h5')
+        encoder.save('encoder_', env , '_.h5')
+        decoder.save('decoder_', env , '_.h5')
 
     def getQvalues(state):
 

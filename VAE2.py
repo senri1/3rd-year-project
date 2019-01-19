@@ -7,9 +7,9 @@ import gym
 import numpy as np
 import cv2
 
-def ConvAE(train_samples,envName):
+def ConvAE(train_samples,envName,agent):
 
-    X,_,_,_ = collectData(train_samples,envName)
+    X,_,_,_ = collectData(train_samples,envName,agent)
 
     height = X.shape[1]
     width = X.shape[2]
@@ -41,22 +41,18 @@ def ConvAE(train_samples,envName):
              optimizer='adam',
              metrics=['accuracy'])
 
-    CAE.fit(X_train,
-        X_train,
-        batch_size=64,
-        epochs=5,
-        verbose=1,
-        validation_data=(X_test, X_test)
-        )
+    History = CAE.fit(X_train,
+                X_train,
+                X_train,
+                batch_size=32,
+                epochs=10,
+                verbose=1,
+                validation_data=(X_test, X_test)
+                )
 
     print("\nSuccess.")
     
-    return CAE
-
-def saveCAE():
-    CAE.save('CAE.h5')
-    encoder.save('encoder.h5')
-    decoder.save('decoder.h5')
+    return CAE,encoder,decoder,History.history
 
 
 def preprocess(observation):                                                                    # converts rgb to black and white

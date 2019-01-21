@@ -3,18 +3,28 @@ from sklearn.linear_model import LinearRegression
 
 class myAgent:
 
-    def __init__(self,epsilon=1,num_actions=None,state_size = 400,env = 'Breakout-v0',encoder=None,decoder=None,CAE=None):
-        
-        if(num_actions==None):
-            self.num_actions = 4
-        else:
-            self.num_actions = num_actions
-            
+    def __init__(
+        self,
+        epsilon=1,
+        num_actions=4,
+        state_size = 400,
+        env = 'Breakout-v0',
+        encoder=None,
+        decoder=None,
+        CAE=None,
+        policyType = 'lr'
+        ):
+        self.epsilon = epsilon
+        self.num_actions = num_actions
+        self.state_size = state_size
+        self.env = env
         self.Q = []
+        self.encoder = encoder
+        self.decoder = decoder
+        self.CAE = CAE
         self.CAE_loss = 0
-
-        for i in range(num_actions,):
-            self.Q.append( LinearRegression() )
+        self.policyType = policyType
+        self.myPolicy = Linearpolicy(self.policyType,self.num_actions)
     
     def create_encoder(num_samples):
         self.CAE, self.encoder, self.decoder, self.CAE_loss = ConvAE(num_samples,self.env,self)
@@ -37,7 +47,7 @@ class myAgent:
         Qvalues = np.zeros( (1,self.num_actions) )
         
         for j in range(self.num_actions):
-                Qvalues[1,j] = self.Q[j].predict(state)
+                Qvalues[1,j] = self.myPolicy[j,0].predict(self.myPolicy[j,1].transform(state))
         
         return Qvalues
 
@@ -51,26 +61,34 @@ class myAgent:
         return states
 
     def getAction(observation):
+
         action = None
+        Qvalues = getQvalues(observation)
         probability = np.random.random_sample()
+
         if self.epsilon <= probability:
-            action = np.argmax()[0]
+            action = np.argmax(Qvalues)
         else:
             action = np.random.randint(0,high=4)
         return action
     
-        #def imporve_policy():
+    def imporve_policy():
 
     
 
-#num_episodes = 100
-#agent = myAgent()
-#encoder = agent.load_encoder
 
-#for episodes in range(num_episodes):
 
-#    observation,actions,rewards,num_episodes = collectData(1000,'Breakout-v0',agent)
-#    states = getState(observation,encoder)
+num_episodes = 100
+agent = myAgent()
+encoder = agent.load_encoder
+
+for episodes in range(num_episodes):
+
+    observation,actions,rewards,num_episodes = collectData('episodes',1000,'Breakout-v0',agent)
+    states = getState(observation,encoder)
+    imporve_policy()
+
+
     
 
 

@@ -1,11 +1,14 @@
 import tensorflow as tf
 from tensorflow.keras import layers
 from sklearn.model_selection import train_test_split
+import sklearn.linear_model as lm
+from sklearn.preprocessing import StandardScaler
 import matplotlib.pyplot as plt
 import os
 import gym
 import numpy as np
 import cv2
+import torch 
 
 def ConvAE(train_samples,envName,agent):
 
@@ -42,7 +45,6 @@ def ConvAE(train_samples,envName,agent):
              metrics=['accuracy'])
 
     History = CAE.fit(X_train,
-                X_train,
                 X_train,
                 batch_size=32,
                 epochs=10,
@@ -99,4 +101,21 @@ def collectData(samples,envName,agent):                                         
     return obs,actions,rewards,num_episodes                                                                               # returns samples*84*84*4 tensor
 
 
+def createPolicy(policyType,num_actions):
 
+    """ This method initialises linear model objects as the policy based on 
+    the policy type selected between lr = oridinairy least squares linear regressoin,
+    l1 = LASSO, l2 = ridge regression. It also creates a Standard scaler object for
+    standardisation """
+
+    policy = []
+    if policyType == 'lr':
+        for _ in range(num_actions):
+            policy.append([lm.LinearRegression(),StandardScaler()])
+    if policyType == 'l1':
+        for i in range(num_actions):
+            policy.append(lm.Lasso(),StandardScaler()])
+    if policyType == 'l2':
+        for i in range(num_actions):
+            policy.append(lm.Ridge(),StandardScaler()])
+    return policy        

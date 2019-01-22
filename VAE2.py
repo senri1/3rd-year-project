@@ -12,7 +12,7 @@ import torch
 
 def ConvAE(train_samples,envName,agent):
 
-    X,_,_,_ = collectData(train_samples,envName,agent)
+    X,_ = collectObs(train_samples,envName,agent)
 
     height = X.shape[1]
     width = X.shape[2]
@@ -65,40 +65,31 @@ def preprocess(observation):                                                    
     return np.reshape(observation,(84,84))
     
 
-def collectData(samples,envName,agent):                                                                       # collects steps amount data, using random actions
+def collectObs(samples,envName,agent):                                                                       # collects steps amount data, using random actions
+
+    steps = samples*4                                                                           # 4 steps is 1 sample
+    obs = np.zeros( (steps,84,84,1), dtype = 'uint8' )
+    num_episodes = 0
 
     env = gym.make(envName)
     env.reset()
 
-    steps = samples*4                                                                           # 4 steps is 1 sample
-    obs = np.zeros( (samples,84,84,4), dtype = 'uint8' )
-    actions = np.zeros( (samples,1), dtype = 'uint8' )
-    rewards = np.zeros( (samples,1), dtype = 'uint8' )
-    num_episodes = 0
+    for n in range 4:
+        observation, reward, done, info = env.step(0)
+        obs[n,:,:,:] = preprocess(observation)[np.newaxis]
 
-    j = 0
-    observation, reward, done, info = env.step(0)
+    for i in range(steps-4):
 
-    for i in range(steps):
-        current_sample = int(np.floor(i/4))
-
-        if j%4 == 0:
-            j=0
-
-        action = agent.getAction(observation)                                                      # your agent here (this takes random actions)
+        action = agent.getAction(obs[i:i+4,:,:,:])                                                      # your agent here (this takes random actions)
         observation, reward, done, info = env.step(action)
 
-        obs[current_sample ,:,:,j] = preprocess(observation) 
-        actions[current_sample,1] = action
-        rewards[current_sample,1] = reward
+        obs[i+4,:,:,:] = preprocess(observation)[np.newaxis] 
 
         if done:
             num_episodes = num_episodes + 1
             env.reset()
-
-        j = j+1
         
-    return obs,actions,rewards,num_episodes                                                                               # returns samples*84*84*4 tensor
+    return obs.reshape( (-1,84,84,4) ), num_episodes                                                          # returns samples*84*84*4 tensor
 
 
 def createPolicy(policyType,num_actions):
@@ -106,16 +97,52 @@ def createPolicy(policyType,num_actions):
     """ This method initialises linear model objects as the policy based on 
     the policy type selected between lr = oridinairy least squares linear regressoin,
     l1 = LASSO, l2 = ridge regression. It also creates a Standard scaler object for
-    standardisation """
+    standardisation and initialises weights to zero. """
 
+    initialise = np.zeros((1,400))
     policy = []
     if policyType == 'lr':
-        for _ in range(num_actions):
+        for i in range(num_actions):
             policy.append([lm.LinearRegression(),StandardScaler()])
+            policy[i][0].fit(initialise)
     if policyType == 'l1':
         for i in range(num_actions):
             policy.append(lm.Lasso(),StandardScaler()])
+            policy[i][0].fit(initialise)
     if policyType == 'l2':
         for i in range(num_actions):
             policy.append(lm.Ridge(),StandardScaler()])
+            policy[i][0].fit(initialise)
     return policy        
+
+def collectEpisodes(episdoes,envName,agent):                                                                       # collects steps amount data, using random actions
+    
+    obs = np.zeros( (1,84,84,1), dtype = 'uint8' )
+    actions = np.zeros( (1) , dtype = 'uint8' )
+    rewards = np.zeros( (1) , dtype = 'uint8' )
+    num_episodes = 0
+    steps = 0
+
+    env = gym.make(envName)
+    env.reset()
+
+    for n in range(4):
+        observation, reward, done, info = env.step(0)
+        obs = np.concatenate( (obs, preprocess(observation)[np.newaxis] ) )
+
+    while num_episodes < episdoes:
+
+        action = agent.getAction(obs[steps:steps+4,:,:,:])                                                      # your agent here (this takes random actions)
+        observation, reward, done, info = env.step(action)
+
+        obs = np.concatenate( (obs, preprocess(observation)[np.newaxis] ) )
+        actions = np.concatenate((actions,np.reshape(action,(1,1))))
+        rewards = np.concatenate((rewards,np.reshape(reward,(1,1))))
+
+        if done:
+            num_episodes = num_episodes + 1
+            env.reset()
+        
+        steps = steps +1
+       
+    return obs,actions,rewards,steps                         

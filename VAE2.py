@@ -101,7 +101,7 @@ def collectObs(samples,k,envName,agent):
     obs = np.zeros( (steps,84,84,1), dtype = 'uint8' )
     actions = np.zeros( (steps,1) , dtype = 'uint8' )
     rewards = np.zeros( (steps,1) , dtype = 'uint8' )
-    ep_rewards = np.zeros((20000,1)) 
+    ep_rewards = np.zeros((200,1)) 
     num_episodes = 0
 
     env = gym.make(envName)
@@ -143,8 +143,8 @@ def createPolicy(policyType ,num_actions):
 
         Returns: An array containing 4 linear models one for each action."""
 
-    initialisex = np.zeros((1,400))
-    initialisey = np.zeros((1,1))
+    initialisex = np.zeros((4,400))
+    initialisey = np.zeros((4,1))
 
     policy = []
     if policyType == 'lr':

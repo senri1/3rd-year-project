@@ -102,16 +102,16 @@ class myAgent:
         X = []
 
         for j in range(self.num_actions):
-            X.append( np.zeros( ( np.count_nonzero(actions==j),1 ) ) )
+            X.append( np.zeros( ( np.count_nonzero(actions==j),400 ) ) )
             Y.append( np.zeros( ( np.count_nonzero(actions==j),1 ) ) )
 
         for i in range(actions.shape[0]-1):
             b = np.array([a[0,actions[i,0]],0],dtype=np.uint32)
-            X[actions[i,0]][b[0],b[1]] = self.getQvalues(states[i,:,:,:])[0,actions[i,0]]
+            X[actions[i,0]][b[0],:] = states[i,:,:,:].reshape((-1))
             Y[actions[i,0]][b[0],b[1]] = rewards[i] + self.disc_factor * np.max(self.getQvalues(states[i+1,:,:,:]))
             a[0,actions[i,0]] += 1
 
-        for n in range(self.num_actions):
+        for n in range(self.num_actions):           
             self.myPolicy[n][0].fit(X[n],Y[n])
         
         return self.myPolicy

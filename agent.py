@@ -6,7 +6,7 @@ class myAgent:
     def __init__(
         self,
         epsilon=1,
-        disc_factor = 0.9,
+        disc_factor = 0.99,
         num_actions=4,
         state_size = 400,
         env = 'Breakout-v0',
@@ -16,6 +16,7 @@ class myAgent:
         policyType = 'lr'
         ):
         self.epsilon = epsilon
+        self.disc_factor = disc_factor
         self.num_actions = num_actions
         self.state_size = state_size
         self.env = env
@@ -65,14 +66,13 @@ class myAgent:
     def getState(self,observation,samples):
         """ Takes in the processed image observations (1 observation is 4 frames) received
         from collecting the data in the environment and returns encoder(observation). """
-        steps = samples*4 - 4
-        states = np.zeros( ( steps ,84,84,4  ) )
+        steps = observation.shape[0] - 4
+        frameObs = np.zeros( ( steps ,84,84,4  ) )
         
         for i in range(steps):
-            for j in range(4):
-                states[i,:,:,j] = observation[i+j]
-
+                frameObs[i:i+1,:,:,:] = Img2Frame( observation[1+i:i+5,:,:,:] ) 
         
+        states = self.encoder.predict(frameObs)
         return states
 
     def getAction(self,observation):
@@ -95,23 +95,28 @@ class myAgent:
             return action
         
     
-    def imporve_policy(states,actions,rewards):
-        X = np.zeros((states.shape[0],1))
-        Y = np.zeros((states.shape[0],1))
-        for i in range(states.shape[0]):
-            X[i,1] = getQvalues(states[i,:])[actions[i]]
-            Y[i,1] = rewards[i] +
+    def improve_policy(self,states,actions,rewards):
+       
+        a = np.zeros((1,self.num_actions),dtype=np.uint64)
+        Y = []
+        X = []
+
+        for j in range(self.num_actions):
+            X.append( np.zeros( ( np.count_nonzero(actions==j),1 ) ) )
+            Y.append( np.zeros( ( np.count_nonzero(actions==j),1 ) ) )
+
+        for i in range(actions.shape[0]-1):
+            b = np.array([a[0,actions[i,0]],0],dtype=np.uint32)
+            X[actions[i,0]][b[0],b[1]] = self.getQvalues(states[i,:,:,:])[0,actions[i,0]]
+            Y[actions[i,0]][b[0],b[1]] = rewards[i] + self.disc_factor * np.max(self.getQvalues(states[i+1,:,:,:]))
+            a[0,actions[i,0]] += 1
+
+        for n in range(self.num_actions):
+            self.myPolicy[n][0].fit(X[n],Y[n])
+        
+        return self.myPolicy
 
 
-samples = 100
-agent = myAgent()
-encoder = agent.load_encoder
-
-for episodes in range(num_episodes):
-
-    observation,actions,rewards,num_episodes = collectObs(samples,4,'Breakout-v0',agent)
-    states = agent.getState(observation,samples)
-    imporve_policy(states,actions,rewards)
 
 
     

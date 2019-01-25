@@ -22,7 +22,7 @@ def ConvAE(train_samples,envName,agent):
                  validation losses every epoch."""
 
 
-    X,_,_,_ = collectObs(train_samples,1,envName,agent)
+    X,_,_,_,_ = collectObs(train_samples,1,envName,agent)
     X = Img2Frame(X)
 
     height = X.shape[1]
@@ -101,6 +101,7 @@ def collectObs(samples,k,envName,agent):
     obs = np.zeros( (steps,84,84,1), dtype = 'uint8' )
     actions = np.zeros( (steps,1) , dtype = 'uint8' )
     rewards = np.zeros( (steps,1) , dtype = 'uint8' )
+    ep_rewards = np.zeros((20000,1)) 
     num_episodes = 0
 
     env = gym.make(envName)
@@ -111,6 +112,7 @@ def collectObs(samples,k,envName,agent):
         obs[n,:,:,:] = preprocess(observation)[np.newaxis]
         actions[n,0] = 0
         rewards[n,0] = reward
+        ep_rewards[0,0] += reward
 
     for i in range(steps-4):
 
@@ -121,13 +123,14 @@ def collectObs(samples,k,envName,agent):
 
         obs[i+4,:,:,:] = preprocess(observation)[np.newaxis]
         actions[i+4,0] = action
-        rewards[i+4,0] = reward 
+        rewards[i+4,0] = reward
+        ep_rewards[num_episodes,0] += reward 
 
         if done:
             num_episodes = num_episodes + 1
             env.reset()
         
-    return obs,actions,rewards,num_episodes                                                  
+    return obs,actions,rewards,num_episodes,ep_rewards                                                  
 
 
 def createPolicy(policyType ,num_actions):
@@ -164,48 +167,3 @@ def Img2Frame(observation):
     return observation
 
 
-def collectEpisodes(episdoes,envName,agent):                                                                       
-    
-    """ Collects training data used to improve policy.
-
-        Input: episodes, the number of episodes of training data needed. envName is the environment
-               from which to collect the training data. agent is an object which has method getAction
-               to determine how to collect the training data. 
-               
-        Returns: obs, 4 dimensional of size (num_observations,84,84,4) where 1 observation is 4 images
-                 of size (84,84,1).
-                 actions is a column vector of size (steps,1) that contains the actions made at each frame.
-                 rewards is a column vector of size (steps,1) that contains the reward received at each frame. 
-                 steps is the number of frames used to generate the training data. """
-
-
-    obs = np.zeros( (1,84,84,1), dtype = 'uint8' )
-    actions = np.zeros( (1,1) , dtype = 'uint8' )
-    rewards = np.zeros( (1,1) , dtype = 'uint8' )
-    num_episodes = 0
-    steps = 0
-
-    env = gym.make(envName)
-    env.reset()
-
-    for n in range(4):
-        observation, reward, done, info = env.step(0)
-        obs = np.concatenate( (obs, preprocess(observation)[np.newaxis] ) )
-
-    while num_episodes < episdoes:
-
-        action = agent.getAction(obs[steps:steps+4,:,:,:])                                                      # your agent here (this takes random actions)
-        observation, reward, done, info = env.step(action)
-
-        obs = np.concatenate( (obs, preprocess(observation)[np.newaxis] ) )
-        actions = np.concatenate((actions,np.reshape(action,(1,1))))
-        rewards = np.concatenate((rewards,np.reshape(reward,(1,1))))
-
-        if done:
-            print('Episode number: ',num_episodes,'\n')
-            num_episodes = num_episodes + 1
-            env.reset()
-        
-        steps = steps +1
-       
-    return obs,actions,rewards,steps                         

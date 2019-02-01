@@ -1,13 +1,15 @@
 from agent import myAgent
 from VAE2 import*
 import matplotlib.pyplot as plt
+import pickle
+import numpy as np
 
-samples = 1000                          #roughly 13 episodes
+samples = 5000                         #roughly 65 episodes
 encoder_samples = 100000
-iterations = 20                        #150 iterations totals roughly 1950 episodes
-episodic_rewards = np.zeros((3000,1))
+iterations = 50                        
+episodic_rewards = np.zeros((20000,1))
 total_ep = 0
-ep_drate =  0.9/iterations-5              #reaches epsilon = 0.1 at the end
+drate =  0.94              #reaches epsilon = 0.1 at the end
 avrg_reward = np.zeros((iterations,1))
 
 agent = myAgent()
@@ -15,27 +17,42 @@ agent = myAgent()
 
 
 #agent.create_encoder(encoder_samples)
+#agent.load_policy()
 agent.load_encoder()
 
 for n in range(iterations):
     
-    observation,actions,rewards,num_episodes,ep_reward = collectObs(samples,4,'Breakout-v0',agent)      
-    episodic_rewards[total_ep:total_ep+num_episodes,0] = ep_reward[0:num_episodes,0]
-    total_ep += num_episodes
-    avrg_reward[n,0] = np.mean(ep_reward[0:num_episodes,0])
+    try:
+        observation,actions,rewards,num_episodes,ep_reward = collectObs(samples,4,'Breakout-v0',agent)      
+        episodic_rewards[total_ep:total_ep+num_episodes,0] = ep_reward[0:num_episodes,0]
+        total_ep += num_episodes
+        avrg_reward[n,0] = np.mean(ep_reward[0:num_episodes,0])
     
-    print('Iteration: ',n)
-    print('Number of episodes this iteration: ',num_episodes)
-    print('Average reward per episode: ', np.mean(ep_reward[0:num_episodes,0]))
-    print('Standard deviation of rewards: ', np.std(ep_reward[0:num_episodes,0]))
+        print('Iteration: ',n)
+        print('Number of episodes this iteration: ',num_episodes)
+        print('Average reward per episode: ', np.mean(ep_reward[0:num_episodes,0]))
+        print('Standard deviation of rewards: ', np.std(ep_reward[0:num_episodes,0]))
+        print('Current epsilon: ',agent.epsilon)
 
-    states = agent.getState(observation,samples)
+        states = agent.getState(observation,samples)
     
-    agent.improve_policy(states,actions[4:,:],rewards[4:,:])
+        agent.improve_policy(states,actions[4:,:],rewards[4:,:])
 
-    if agent.epsilon>0.1:
-        agent.epsilon -= 0.009
+        if agent.epsilon>0.001:
+                agent.epsilon *= drate
+        else:
+                agent.epsilon = 0.001
+    
+    except:
+           agent.save_policy()
+           np.save('observation',observation)
+           np.save('actions',actions)
+           np.save('rewards',rewards)
+           np.save('num_episodes',num_episodes)
+           np.save('ep_reward',ep_reward)
 
+
+agent.save_policy()
 print("Total number of episodes: ",total_ep)
 plt.scatter(np.arange(1,iterations+1),avrg_reward)
 plt.ylabel('Average reward per episode')

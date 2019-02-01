@@ -1,5 +1,6 @@
 from VAE2 import*
 from sklearn.linear_model import LinearRegression
+import pickle
 
 class myAgent:
 
@@ -52,9 +53,27 @@ class myAgent:
         self.encoder.save('encoder_' + self.env + '.h5')
         self.decoder.save('decoder_' + self.env + '.h5')
 
+    def save_policy(self):
+        with open("policies.pckl", "wb") as f:
+            for policy in self.myPolicy:
+                pickle.dump(policy, f)
+    
+    def load_policy(self):
+        self.myPolicy = []
+        with open("policies.pckl", "rb") as f:
+            while True:
+                try:
+                    self.myPolicy.append(pickle.load(f))
+                except EOFError:
+                    break
+
     def getQvalues(self,state):
-        """ Takes in the state i.e. encoder(observation) and returns an array with length equal to
-        the number of actions, where each element specifies the Q value for a given action. """
+
+        """ Takes in the state and returns the Q value for each possible action.
+            
+            Input: state is encoder(observation).
+            
+            Output: Array with Q values for each action. """
 
         Qvalues = np.zeros( (1,self.num_actions) )
         
@@ -76,7 +95,9 @@ class myAgent:
         return states
 
     def getAction(self,observation):
+
         """ Input: obervation is an input of shape (1,84,84,4)
+
             Output: if encoder is none outputs random action for random policy,
             else returns action from epsilon greedy policy."""
 
@@ -94,10 +115,9 @@ class myAgent:
                 action = np.random.randint(0,high=4)
             return action
         
-    
     def improve_policy(self,states,actions,rewards):
        
-        a = np.zeros((1,self.num_actions),dtype=np.uint64)
+        action_count = np.zeros((1,self.num_actions),dtype=np.uint32)
         Y = []
         X = []
 
@@ -106,15 +126,18 @@ class myAgent:
             Y.append( np.zeros( ( np.count_nonzero(actions==j),1 ) ) )
 
         for i in range(actions.shape[0]-1):
-            b = np.array([a[0,actions[i,0]],0],dtype=np.uint32)
-            X[actions[i,0]][b[0],:] = states[i,:,:,:].reshape((-1))
-            Y[actions[i,0]][b[0],b[1]] = rewards[i] + self.disc_factor * np.max(self.getQvalues(states[i+1,:,:,:]))
-            a[0,actions[i,0]] += 1
+            action_index = np.array([action_count[0,actions[i,0]],0],dtype=np.uint32)
+            X[actions[i,0]][action_index[0],:] = states[i,:,:,:].reshape((-1))
+            Y[actions[i,0]][action_index[0],0] = rewards[i] + self.disc_factor * np.max(self.getQvalues(states[i+1,:,:,:]))
+            action_count[0,actions[i,0]] += 1
 
         for n in range(self.num_actions):           
             self.myPolicy[n][0].fit(X[n],Y[n])
         
         return self.myPolicy
+    
+
+
 
 
 

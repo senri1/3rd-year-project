@@ -9,6 +9,7 @@ import gym
 import numpy as np
 import cv2
 import torch 
+import time
 
 def ConvAE(train_samples,envName,agent):
 
@@ -70,11 +71,11 @@ def ConvAE(train_samples,envName,agent):
 
 def preprocess(observation):    
 
-    """ Converts single RGB image into an image with 1 bit colour of size 84,84
+    """ Converts single RGB image into an image with 1 bit colour of size 84,84,1.
 
         Input: An image of of shape (210,160,3) with 8 bit colour.
 
-        Returns: An image of shape shape (84,84) with 1 bit colour. """
+        Returns: An image of shape shape (84,84,1) with 1 bit colour. """
 
     observation = cv2.cvtColor(cv2.resize(observation,(84,110)), cv2.COLOR_BGR2GRAY)
     observation = observation[26:110,:]                                                         # get rid of first 27 rows of image
@@ -87,7 +88,7 @@ def collectObs(samples,k,envName,agent):
     """ Collects observations to be used as training data for the convolutional autoencoder.
 
         Input: samples, the number data points needed in the training set one sample is 4 frames
-               of 1 bit (84,84) images. envName is the environment to collect the observations from.
+               of 1 bit colour 84x84 images. envName is the environment to collect the observations from.
                agent is on abject with method getAction which determines how the data will be collected.
 
         Returns: Obs, 4 dimensional array of shape (steps,84,84,1) of observations 1st dimension is number of steps.
@@ -101,7 +102,7 @@ def collectObs(samples,k,envName,agent):
     obs = np.zeros( (steps,84,84,1), dtype = 'uint8' )
     actions = np.zeros( (steps,1) , dtype = 'uint8' )
     rewards = np.zeros( (steps,1) , dtype = 'uint8' )
-    ep_rewards = np.zeros((200,1)) 
+    ep_rewards = np.zeros((400,1)) 
     num_episodes = 0
 
     env = gym.make(envName)
@@ -118,7 +119,7 @@ def collectObs(samples,k,envName,agent):
 
         if i%k == 0:
             action = agent.getAction( Img2Frame(obs[i:i+4,:,:,:]) )                                                     
-
+        #env.render()
         observation, reward, done, info = env.step(action)
 
         obs[i+4,:,:,:] = preprocess(observation)[np.newaxis]
@@ -129,7 +130,7 @@ def collectObs(samples,k,envName,agent):
         if done:
             num_episodes = num_episodes + 1
             env.reset()
-        
+    env.close()
     return obs,actions,rewards,num_episodes,ep_rewards                                                  
 
 

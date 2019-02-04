@@ -66,22 +66,10 @@ def ConvAE(train_samples,envName,agent):
 
     print("\nSuccess.")
     
-    return CAE,encoder,decoder,History.history
+    state = encoder.predict(X_train)
+    mean,sd = standardize(state)
 
-
-def preprocess(observation):    
-
-    """ Converts single RGB image into an image with 1 bit colour of size 84,84,1.
-
-        Input: An image of of shape (210,160,3) with 8 bit colour.
-
-        Returns: An image of shape shape (84,84,1) with 1 bit colour. """
-
-    observation = cv2.cvtColor(cv2.resize(observation,(84,110)), cv2.COLOR_BGR2GRAY)
-    observation = observation[26:110,:]                                                         # get rid of first 27 rows of image
-    ret, observation = cv2.threshold(observation,1,1,cv2.THRESH_BINARY)
-    return np.reshape(observation,(84,84,1))
-    
+    return CAE,encoder,decoder,History.history,mean,sd
 
 def collectObs(samples,k,envName,agent):            
 
@@ -102,7 +90,7 @@ def collectObs(samples,k,envName,agent):
     obs = np.zeros( (steps,84,84,1), dtype = 'uint8' )
     actions = np.zeros( (steps,1) , dtype = 'uint8' )
     rewards = np.zeros( (steps,1) , dtype = 'uint8' )
-    ep_rewards = np.zeros((400,1)) 
+    ep_rewards = np.zeros((4000,1)) 
     num_episodes = 0
 
     env = gym.make(envName)
@@ -118,8 +106,10 @@ def collectObs(samples,k,envName,agent):
     for i in range(steps-4):
 
         if i%k == 0:
-            action = agent.getAction( Img2Frame(obs[i:i+4,:,:,:]) )                                                     
+            action = agent.getAction( Img2Frame(obs[i:i+4,:,:,:]) )      
+        #time.sleep(0.016)                                               
         #env.render()
+        #print(action)
         observation, reward, done, info = env.step(action)
 
         obs[i+4,:,:,:] = preprocess(observation)[np.newaxis]
@@ -144,8 +134,8 @@ def createPolicy(policyType ,num_actions):
 
         Returns: An array containing 4 linear models one for each action."""
 
-    initialisex = np.zeros((4,400))
-    initialisey = np.zeros((4,1))
+    initialisex = np.random.randn(4,400)
+    initialisey = np.random.randn(4,1)
 
     policy = []
     if policyType == 'lr':
@@ -167,4 +157,24 @@ def Img2Frame(observation):
     observation = np.moveaxis(observations,1,3)
     return observation
 
+def preprocess(observation):    
 
+    """ Converts single RGB image into an image with 1 bit colour of size 84,84,1.
+
+        Input: An image of of shape (210,160,3) with 8 bit colour.
+
+        Returns: An image of shape shape (84,84,1) with 1 bit colour. """
+
+    observation = cv2.cvtColor(cv2.resize(observation,(84,110)), cv2.COLOR_BGR2GRAY)
+    observation = observation[26:110,:]                                                         # get rid of first 27 rows of image
+    ret, observation = cv2.threshold(observation,1,1,cv2.THRESH_BINARY)
+    return np.reshape(observation,(84,84,1))
+    
+def standardize(state):
+    state_temp = np.zeros((state.shape[0],400))
+    state = np.moveaxis(state,3,1)
+    for i in range(state.shape[0]):
+        state_temp[i,:] = state[i,:,:,:].reshape((1,400))
+    mean = np.mean(state_temp,axis=0)
+    sd = np.std(state_temp,axis=0)
+    return mean,sd

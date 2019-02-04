@@ -28,13 +28,15 @@ class myAgent:
         self.CAE_loss = 0
         self.policyType = policyType
         self.myPolicy = createPolicy(self.policyType,self.num_actions)
+        self.mean = None
+        self.sd = None
     
     def create_encoder(self,num_samples):
         """ This methoed creates a convolutional autoencoder trained on the agents current environment
         specified in self.env for samples (1 sample is 4 frames) specified in num_samples and returns the encoder
         and the training and validation loss for each epoch."""
 
-        self.CAE, self.encoder, self.decoder, self.CAE_loss = ConvAE(num_samples,self.env,self)
+        self.CAE, self.encoder, self.decoder, self.CAE_loss, self.mean, self.sd = ConvAE(num_samples,self.env,self)
         return self.encoder, self.CAE_loss
 
 
@@ -44,6 +46,8 @@ class myAgent:
         self.CAE = tf.keras.models.load_model( os.getcwd() + '/CAE_' + self.env + '.h5' )
         self.encoder = tf.keras.models.load_model( os.getcwd() + '/encoder_' + self.env + '.h5')
         self.decoder = tf.keras.models.load_model( os.getcwd() + '/CAE_' + self.env + '.h5' )
+        self.mean = np.load('mean.npy')
+        self.sd = np.load('sd.npy')
         return self.encoder
 
     def save_encoder(self):
@@ -52,6 +56,8 @@ class myAgent:
         self.CAE.save('CAE_' + self.env + '.h5')
         self.encoder.save('encoder_' + self.env + '.h5')
         self.decoder.save('decoder_' + self.env + '.h5')
+        np.save('mean',self.mean)
+        np.save('sd',self.sd)
 
     def save_policy(self):
         with open("policies.pckl", "wb") as f:
@@ -76,23 +82,10 @@ class myAgent:
             Output: Array with Q values for each action. """
 
         Qvalues = np.zeros( (1,self.num_actions) )
-        
         for j in range(self.num_actions):
                 Qvalues[0,j] = self.myPolicy[j][0].predict(state.reshape((1,-1)))
         
         return Qvalues
-
-    def getState(self,observation,samples):
-        """ Takes in the processed image observations (1 observation is 4 frames) received
-        from collecting the data in the environment and returns encoder(observation). """
-        steps = observation.shape[0] - 4
-        frameObs = np.zeros( ( steps ,84,84,4  ) )
-        
-        for i in range(steps):
-                frameObs[i:i+1,:,:,:] = Img2Frame( observation[1+i:i+5,:,:,:] ) 
-        
-        states = self.encoder.predict(frameObs)
-        return states
 
     def getAction(self,observation):
 
@@ -106,6 +99,8 @@ class myAgent:
         else:
             action = None
             state = self.encoder.predict( observation )
+            state = np.moveaxis(state,3,1).reshape((1,-1))
+            state = (state - self.mean)/self.sd
             Qvalues = self.getQvalues(state)
             probability = np.random.random_sample()
 
@@ -114,7 +109,22 @@ class myAgent:
             else:
                 action = np.random.randint(0,high=4)
             return action
+    
+    def getState(self,observation,samples):
+        """ Takes in the processed image observations (1 observation is 4 frames) received
+        from collecting the data in the environment and returns encoder(observation). """
+        steps = observation.shape[0] - 4
+        frameObs = np.zeros( ( steps ,84,84,4  ) )
         
+        for i in range(steps):
+                frameObs[i:i+1,:,:,:] = Img2Frame( observation[1+i:i+5,:,:,:] ) 
+        
+        states = self.encoder.predict(frameObs)
+        states = np.moveaxis(states,3,1)
+        states = (states - self.mean)/self.sd
+        
+        return states
+
     def improve_policy(self,states,actions,rewards):
        
         action_count = np.zeros((1,self.num_actions),dtype=np.uint32)
@@ -127,12 +137,13 @@ class myAgent:
 
         for i in range(actions.shape[0]-1):
             action_index = np.array([action_count[0,actions[i,0]],0],dtype=np.uint32)
-            X[actions[i,0]][action_index[0],:] = states[i,:,:,:].reshape((-1))
-            Y[actions[i,0]][action_index[0],0] = rewards[i] + self.disc_factor * np.max(self.getQvalues(states[i+1,:,:,:]))
+            X[actions[i,0]][action_index[0],:] = states[i,:,:,:].reshape((1,-1))
+            Y[actions[i,0]][action_index[0],0] = rewards[i] + self.disc_factor * np.max(self.getQvalues(states[i+1:i+2,:,:,:]))
             action_count[0,actions[i,0]] += 1
 
-        for n in range(self.num_actions):           
-            self.myPolicy[n][0].fit(X[n],Y[n])
+        for n in range(self.num_actions):
+            if(action_count[0,n] != 0):           
+                self.myPolicy[n][0].fit(X[n],Y[n])
         
         return self.myPolicy
     

@@ -4,12 +4,12 @@ import matplotlib.pyplot as plt
 import pickle
 import numpy as np
 
-samples = 5000                         #roughly 65 episodes
+samples = 2000                         #roughly 65 episodes
 encoder_samples = 100000
-iterations = 50                        
+iterations = 100                       
 episodic_rewards = np.zeros((20000,1))
 total_ep = 0
-drate =  0.94              #reaches epsilon = 0.1 at the end
+drate =  0.93              
 avrg_reward = np.zeros((iterations,1))
 
 agent = myAgent()
@@ -23,7 +23,7 @@ agent.load_encoder()
 for n in range(iterations):
     
     try:
-        observation,actions,rewards,num_episodes,ep_reward = collectObs(samples,4,'Breakout-v0',agent)      
+        observation,actions,rewards,num_episodes,ep_reward = collectObs(samples,4,'Breakout-v0',agent) # 1) Get data      
         episodic_rewards[total_ep:total_ep+num_episodes,0] = ep_reward[0:num_episodes,0]
         total_ep += num_episodes
         avrg_reward[n,0] = np.mean(ep_reward[0:num_episodes,0])
@@ -34,14 +34,14 @@ for n in range(iterations):
         print('Standard deviation of rewards: ', np.std(ep_reward[0:num_episodes,0]))
         print('Current epsilon: ',agent.epsilon)
 
-        states = agent.getState(observation,samples)
+        states = agent.getState(observation,samples) # 2) Get state from the observations
     
-        agent.improve_policy(states,actions[4:,:],rewards[4:,:])
+        agent.improve_policy(states,actions[4:,:],rewards[4:,:]) # 3) Improve policy using collected data
 
-        if agent.epsilon>0.001:
+        if agent.epsilon>0.01:         # 4) Decrease chance of taking random action
                 agent.epsilon *= drate
         else:
-                agent.epsilon = 0.001
+                agent.epsilon = 0.01
     
     except:
            agent.save_policy()
@@ -59,7 +59,7 @@ plt.ylabel('Average reward per episode')
 plt.xlabel('Iteration')
 plt.show()
 
-fig = plt.figure(figsize=(8, 8))
+#fig = plt.figure(figsize=(8, 8))
 fig1 = plt.figure(figsize=(8, 8))
 ax = []
 ax1 = []

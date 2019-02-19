@@ -67,7 +67,7 @@ def ConvAE(train_samples,envName,agent):
     print("\nSuccess.")
     
     state = encoder.predict(X_train)
-    mean,sd = standardize(state)
+    mean,sd,_ = standardize(state)
 
     return CAE,encoder,decoder,History.history,mean,sd
 
@@ -177,4 +177,4 @@ def standardize(state):
         state_temp[i,:] = state[i,:,:,:].reshape((1,400))
     mean = np.mean(state_temp,axis=0)
     sd = np.std(state_temp,axis=0)
-    return mean,sd
+    return mean, sd, state_temp

@@ -87,19 +87,20 @@ class myAgent:
         
         return Qvalues
 
-    def getAction(self,observation):
+    def getAction(self,frames):
 
-        """ Input: obervation is an input of shape (1,84,84,4)
+        """ Input: frames is an input of shape (1,84,84,4)
 
-            Output: if encoder is none outputs random action for random policy,
-            else returns action from epsilon greedy policy."""
+            Output: action, an integer that can be 0,1,2,3"""
 
+        # If an encoder has not been made, take random action.
         if self.encoder == None:
             return np.random.randint(0,high=4)
+        
+        # 
         else:
-            action = None
-            state = self.encoder.predict( observation )
-            state = np.moveaxis(state,3,1).reshape((1,-1))
+            state = self.encoder.predict(frames)
+            stateWithout0 = standardize(state)
             state = (state - self.mean)/self.sd
             Qvalues = self.getQvalues(state)
             probability = np.random.random_sample()
@@ -110,39 +111,72 @@ class myAgent:
                 action = np.random.randint(0,high=4)
             return action
     
-    def getState(self,observation,samples):
-        """ Takes in the processed image observations (1 observation is 4 frames) received
-        from collecting the data in the environment and returns encoder(observation). """
-        steps = observation.shape[0] - 4
-        frameObs = np.zeros( ( steps ,84,84,4  ) )
+    def getState(self,observation):
+        """ Input: Observation is size (steps,84,84,1)
+            Output: states size (steps+4,400) """
+
+        # Don't include first 4 observations, since they were used to initialise an action
+        # when the observations were collected.
+        numStates = observation.shape[0] - 4
+
+        # Encoder takes in 4 frames of size (_,84,84,4)
+        frames = np.zeros( ( numStates ,84,84,4  ) )
+
+        # Convert observations into frames, by sliding along the first axis of observation
+        # with size 4 and step 1.
+        for i in range(numStates):
+                frames[i:i+1,:,:,:] = Img2Frame( observation[i+1:i+5,:,:,:] ) 
         
-        for i in range(steps):
-                frameObs[i:i+1,:,:,:] = Img2Frame( observation[1+i:i+5,:,:,:] ) 
-        
-        states = self.encoder.predict(frameObs)
-        states = np.moveaxis(states,3,1)
-        states = (states - self.mean)/self.sd
+        # Use encoder to get states from frames.
+        # Convert states from shape (numStates,5,5,16) to (numStates,400)
+        states = self.encoder.predict(frames)
+        _,_,states = standardize(states)
+
+        # Standardize the states using the mean and standard deviation of the states that were
+        # from the observations used to train the convolutional autoencoder.
+        # Also replace any feature with 0 standard deviation with value 0. 
+        statesMean0 = states - self.mean
+        states = np.divide(statesMean0, self.sd, out=np.zeros_like(statesMean0), where=self.sd!=0)
         
         return states
 
     def improve_policy(self,states,actions,rewards):
+
+        """ Input: states is output of encoder(observation) with size (steps-4,400), 
+                   actions and rewards are arrays with size (steps-4,1)
+            
+            Output: improved policy  
+        """
        
-        action_count = np.zeros((1,self.num_actions),dtype=np.uint32)
+        # create array to keep track of the number of time each action has occured
+        actionCount = np.zeros((1,self.num_actions),dtype=np.uint32)
+        
+        # X: will contain #ofActions arrays, each array will contain states of size (1,400),
+        # the array a state is stored in will depend on the action made at that state. 
+        #
+        # Y: will contain #ofActions arrays of the target value: r(s) + y*Q(s'), the array
+        # a target value is stored in is based on the action made in the state for which
+        # we are predicting the target value.
         Y = []
         X = []
 
+        # create arrays for training data for each action, each with size equal to the 
+        # number of times the action occured.
         for j in range(self.num_actions):
             X.append( np.zeros( ( np.count_nonzero(actions==j),400 ) ) )
             Y.append( np.zeros( ( np.count_nonzero(actions==j),1 ) ) )
 
+        # populate each array corresponding to the action taken
         for i in range(actions.shape[0]-1):
-            action_index = np.array([action_count[0,actions[i,0]],0],dtype=np.uint32)
-            X[actions[i,0]][action_index[0],:] = states[i,:,:,:].reshape((1,-1))
-            Y[actions[i,0]][action_index[0],0] = rewards[i] + self.disc_factor * np.max(self.getQvalues(states[i+1:i+2,:,:,:]))
-            action_count[0,actions[i,0]] += 1
-
+            idx = actionCount[0,actions[i,0]]
+            X[actions[i,0]][idx,:] = states[i,:]
+            Y[actions[i,0]][idx,0] = rewards[i] + self.disc_factor * np.max(self.getQvalues(states[i+1]))
+            actionCount[0,actions[i,0]] += 1
+        
+        # For each action fit a linear model with squared error loss: ( w.s - r(s) + y*Q(s') )^2.
+        # Don't fit if there is no data, in the case an action was never taken.
         for n in range(self.num_actions):
-            if(action_count[0,n] != 0):           
+            if(actionCount[0,n] != 0):           
                 self.myPolicy[n][0].fit(X[n],Y[n])
         
         return self.myPolicy

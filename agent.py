@@ -41,7 +41,8 @@ class myAgent:
 
 
     def load_encoder(self):
-        """ This method loads a convolutional autoencoder trained on the environment specified in self.env """
+        """ This method loads a convolutional autoencoder trained on the environment specified in self.env, as well as
+            the mean and standard deviation of the states obtained from the training data used to train the CAE. """
 
         self.CAE = tf.keras.models.load_model( os.getcwd() + '/CAE_' + self.env + '.h5' )
         self.encoder = tf.keras.models.load_model( os.getcwd() + '/encoder_' + self.env + '.h5')
@@ -51,7 +52,7 @@ class myAgent:
         return self.encoder
 
     def save_encoder(self):
-        """ saves the CAE """
+        """ saves the CAE as well as the mean and standard deviation of states obtained from the data it was trained on."""
 
         self.CAE.save('CAE_' + self.env + '.h5')
         self.encoder.save('encoder_' + self.env + '.h5')
@@ -65,6 +66,7 @@ class myAgent:
                 pickle.dump(policy, f)
     
     def load_policy(self):
+
         self.myPolicy = []
         with open("policies.pckl", "rb") as f:
             while True:
@@ -75,14 +77,14 @@ class myAgent:
 
     def getQvalues(self,state):
 
-        """ Takes in the state and returns the Q value for each possible action.
-            
-            Input: state is encoder(observation).
+        """ Input: state can be shape (1,5,5,16) or (1,400).
             
             Output: Array with Q values for each action. """
 
         Qvalues = np.zeros( (1,self.num_actions) )
         for j in range(self.num_actions):
+
+                # Use linear model corresponding to the action to get its Q value
                 Qvalues[0,j] = self.myPolicy[j][0].predict(state.reshape((1,-1)))
         
         return Qvalues
@@ -97,14 +99,19 @@ class myAgent:
         if self.encoder == None:
             return np.random.randint(0,high=4)
         
-        # 
+        # Return action using agents epsilon greedy policy
         else:
+            # Use encoder to get state of shape (1,5,5,16) the convert to shape (1,400) 
             state = self.encoder.predict(frames)
-            stateWithout0 = standardize(state)
-            state = (state - self.mean)/self.sd
+            stateMean0 = standardize(state)
+
+            # Standardize then get list of Q values for each action and generate random probability
+            stateMean0 = states - self.mean
+            states = np.divide(stateMean0, self.sd, out=np.zeros_like(stateMean0), where=self.sd!=0)
             Qvalues = self.getQvalues(state)
             probability = np.random.random_sample()
 
+            # Take random action with probability epsilon
             if self.epsilon <= probability:
                 action = np.argmax(Qvalues)
             else:

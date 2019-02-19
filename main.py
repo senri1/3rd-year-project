@@ -34,7 +34,7 @@ for n in range(iterations):
         print('Standard deviation of rewards: ', np.std(ep_reward[0:num_episodes,0]))
         print('Current epsilon: ',agent.epsilon)
 
-        states = agent.getState(observation,samples) # 2) Get state from the observations
+        states = agent.getState(observation) # 2) Get state from the observations
     
         agent.improve_policy(states,actions[4:,:],rewards[4:,:]) # 3) Improve policy using collected data
 

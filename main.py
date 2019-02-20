@@ -4,7 +4,15 @@ import matplotlib.pyplot as plt
 import pickle
 import numpy as np
 
-samples = 2000                         #roughly 65 episodes
+# samples - The amount of data used each iteration to improve the policy.
+#           One sample is 4 frames of an observation from the game. 
+
+# encoder_samples - The number of samples to train the encoder. One sample
+#                   4 frames from the game. 
+# 
+# drate - The rate at which we decay the chance of taking random action.
+#         
+samples = 2000
 encoder_samples = 100000
 iterations = 100                       
 episodic_rewards = np.zeros((20000,1))
@@ -14,31 +22,41 @@ avrg_reward = np.zeros((iterations,1))
 
 agent = myAgent()
 
-
-
+# Uncomment and comment as required.
 #agent.create_encoder(encoder_samples)
 #agent.load_policy()
 agent.load_encoder()
 
 for n in range(iterations):
-    
+
+    # Try taining the agent, if theres an error save the policy and data.
     try:
-        observation,actions,rewards,num_episodes,ep_reward = collectObs(samples,4,'Breakout-v0',agent) # 1) Get data      
+        
+        # 1) Collect training data to use to train the agent. If agent has no policy, random
+        #    actions will be used to collect the data. 
+        observation,actions,rewards,num_episodes,ep_reward = collectObs(samples,4,'Breakout-v0',agent)     
         episodic_rewards[total_ep:total_ep+num_episodes,0] = ep_reward[0:num_episodes,0]
         total_ep += num_episodes
         avrg_reward[n,0] = np.mean(ep_reward[0:num_episodes,0])
-    
+        
+        # Print useful information
         print('Iteration: ',n)
         print('Number of episodes this iteration: ',num_episodes)
         print('Average reward per episode: ', np.mean(ep_reward[0:num_episodes,0]))
         print('Standard deviation of rewards: ', np.std(ep_reward[0:num_episodes,0]))
         print('Current epsilon: ',agent.epsilon)
 
-        states = agent.getState(observation) # 2) Get state from the observations
-    
-        agent.improve_policy(states,actions[4:,:],rewards[4:,:]) # 3) Improve policy using collected data
+        # 2) Get states that will be used to train the policy.
+        #    observation            -> encoder(observation)   -> flatten(encoder(observation))    
+        #    (samples*4, 84, 84, 1) -> (samples*4, 16, 16, 5) -> (samples*4-4, 400)
+        states = agent.getState(observation) 
+        
+        # 3) Improve policy using the states
+        agent.improve_policy(states,actions[4:,:],rewards[4:,:]) 
 
-        if agent.epsilon>0.01:         # 4) Decrease chance of taking random action
+        # 4) Decrease epsilon untill it is 0.01. Porbability of random action decreases
+        #    down to 0.01.
+        if agent.epsilon>0.01:         
                 agent.epsilon *= drate
         else:
                 agent.epsilon = 0.01
@@ -51,7 +69,7 @@ for n in range(iterations):
            np.save('num_episodes',num_episodes)
            np.save('ep_reward',ep_reward)
 
-
+# Save policy, print useful info and plot average reward per episode vs iterations
 agent.save_policy()
 print("Total number of episodes: ",total_ep)
 plt.scatter(np.arange(1,iterations+1),avrg_reward)

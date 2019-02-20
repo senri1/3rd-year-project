@@ -79,7 +79,7 @@ class myAgent:
 
         """ Input: state can be shape (1,5,5,16) or (1,400).
             
-            Output: Array with Q values for each action. """
+            Return: Array with Q values for each action. """
 
         Qvalues = np.zeros( (1,self.num_actions) )
         for j in range(self.num_actions):
@@ -89,11 +89,11 @@ class myAgent:
         
         return Qvalues
 
-    def getAction(self,frames):
+    def getAction(self,frames):s
 
         """ Input: frames is an input of shape (1,84,84,4)
 
-            Output: action, an integer that can be 0,1,2,3"""
+            Return: action, an integer that can be 0,1,2,3"""
 
         # If an encoder has not been made, take random action.
         if self.encoder == None:
@@ -120,7 +120,8 @@ class myAgent:
     
     def getState(self,observation):
         """ Input: Observation is size (steps,84,84,1)
-            Output: states size (steps+4,400) """
+
+            Return: states size (steps+4,400) """
 
         # Don't include first 4 observations, since they were used to initialise an action
         # when the observations were collected.
@@ -152,7 +153,7 @@ class myAgent:
         """ Input: states is output of encoder(observation) with size (steps-4,400), 
                    actions and rewards are arrays with size (steps-4,1)
             
-            Output: improved policy  
+            Return: improved policy  
         """
        
         # create array to keep track of the number of time each action has occured

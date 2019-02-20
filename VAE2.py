@@ -15,23 +15,27 @@ def ConvAE(train_samples,envName,agent):
 
     """ Creats a convolutional autoencoder.
 
-        Input:  train_samples is the number of samples to train on. envName is the name of the
-                environment to get the samples from. agent is an object with method getAction
-                that determines the actions taken in the environment to take samples.
+        Input:  train_samples is the number of samples to train on 1 sample is 4 frames concatenated together 
+                to have shape of (1,84,84,4). envName is the name of the environment to get the samples from.
+                agent is an object with method getAction that determines the actions taken in the environment 
+                to take samples.                 
+                
+        Returns: Returns encoder, decoder and CAE objects, the history of training and validation losses every
+                 epoch and the mean and standard deviation of the states produced by encoder from the training 
+                 to be used for standardization. """
 
-        Returns: Returns encoder, decoder and CAE objects as well as the history of training and
-                 validation losses every epoch."""
-
-
+    # Collect observations in X of shape (train_samples*4,84,84,1), then group observations into stacks of 4
+    # using Img2Frame to turn X into shape (train_samples,84,84,4).
     X,_,_,_,_ = collectObs(train_samples,1,envName,agent)
     X = Img2Frame(X)
 
+    # Get height width and channels and split the training data into train and test. 
     height = X.shape[1]
     width = X.shape[2]
     channels = X.shape[3]   
     X_train, X_test = train_test_split(X,test_size=0.2)
 
-
+    # Define the structure of the encoder
     encoder_input = tf.keras.layers.Input( shape = (height,width,channels))
     encoded = layers.Conv2D( filters = 32, kernel_size = 8, padding = 'valid', strides = 4, activation = 'relu', input_shape = (height,width,channels) ) (encoder_input)
     encoded = layers.Conv2D( filters = 64, kernel_size = 4, padding = 'valid', strides = 2, activation = 'relu' ) (encoded)
@@ -39,6 +43,7 @@ def ConvAE(train_samples,envName,agent):
     encoded = layers.Conv2D( filters = 16, kernel_size = 3, padding = 'valid', strides = 1, activation = 'relu', name='encoder_output' ) (encoded)
     encoder = tf.keras.Model( encoder_input, encoded )
 
+    # Define the structure of the decoder
     decoder_input = tf.keras.layers.Input( shape = ( encoder.output_shape[1], encoder.output_shape[2], encoder.output_shape[3] ) )
     decoded = layers.Conv2DTranspose( filters = 16, kernel_size = 3, padding = 'valid', strides = 1, activation = 'relu', input_shape = (encoder.output_shape[1], encoder.output_shape[2], encoder.output_shape[3]) )(decoder_input)
     decoded = layers.Conv2DTranspose( filters = 64, kernel_size = 3, padding = 'valid', strides = 1, activation = 'relu' ) (decoded)
@@ -47,11 +52,12 @@ def ConvAE(train_samples,envName,agent):
     decoded = layers.Conv2DTranspose( filters = 4, kernel_size = 1, padding = 'valid', strides = 1, activation = 'sigmoid' ) (decoded)
     decoder = tf.keras.Model( decoder_input, decoded )
 
+    # Join encoder and decoder together to get a convolutional autoencoder.
     autoencoder = decoder( encoder(encoder_input) )
     CAE = tf.keras.Model( encoder_input, autoencoder )
 
+    # Print the summary, then compile and fit (train).
     print(CAE.summary())
-
     CAE.compile(loss='binary_crossentropy',
              optimizer='adam',
              metrics=['accuracy'])
@@ -64,8 +70,7 @@ def ConvAE(train_samples,envName,agent):
                 validation_data=(X_test, X_test)
                 )
 
-    print("\nSuccess.")
-    
+    # Get the standard deviation and mean of the states produced by the encoder from the training data.    
     state = encoder.predict(X_train)
     mean,sd,_ = standardize(state)
 
@@ -73,29 +78,35 @@ def ConvAE(train_samples,envName,agent):
 
 def collectObs(samples,k,envName,agent):            
 
-    """ Collects observations to be used as training data for the convolutional autoencoder.
-
-        Input: samples, the number data points needed in the training set one sample is 4 frames
-               of 1 bit colour 84x84 images. envName is the environment to collect the observations from.
+    """ Input: samples, the number data points needed in the training set one sample is shape (1,84,84,4).
+               k is a parameter that decides for how many frames an action is repeated till a new one is chosen 
+               through getAction. 
+               envName is the environment to collect the observations from.
                agent is on abject with method getAction which determines how the data will be collected.
 
-        Returns: Obs, 4 dimensional array of shape (steps,84,84,1) of observations 1st dimension is number of steps.
-                 actions, a column vector of shape (steps,1) containing the action made at each step.
-                 rewards, a column vector of shape (steps,1) containing the reward received at each step.
-                 Also returns the number of episodes needed to collect the observaitons.  
-                 Note: Steps is equal to number of frames and samples*4 """
+        Returns: obs, an array of observations of shape (samples*4,84,84,1).
+                 actions, a column vector of shape (samples*4,1) containing the action made at each observation.
+                 rewards, a column vector of shape (samples*4,1) containing the reward received at each observation.
+                 num_ep, the number of episodes needed to collect the samples.
+                 ep_rewards, array of shape (num_ep,1) with total reward received each episode. """
 
+    # Increase samples by 1 to accomodate for the initial 4 observations required to get an action from the policy
+    # since a single state is 4 frames. 
     samples = samples + 1
-    steps = samples*4                                          # 4 steps is 1 sample
+    # Steps is total number of frames/observations.
+    steps = samples*4
+    #Create arrays to store values of interest.                                          
     obs = np.zeros( (steps,84,84,1), dtype = 'uint8' )
     actions = np.zeros( (steps,1) , dtype = 'uint8' )
     rewards = np.zeros( (steps,1) , dtype = 'uint8' )
     ep_rewards = np.zeros((4000,1)) 
     num_episodes = 0
 
+    # Initialise game environment.
     env = gym.make(envName)
     env.reset()
 
+    # Agents policy needs 4 observations to make action (since 1 state = 4 frames).
     for n in range(4):
         observation, reward, done, _ = env.step(0)
         obs[n,:,:,:] = preprocess(observation)[np.newaxis]
@@ -103,20 +114,25 @@ def collectObs(samples,k,envName,agent):
         rewards[n,0] = reward
         ep_rewards[0,0] += reward
 
+    # Generate the observations
     for i in range(steps-4):
 
+        # Decide on a new action every k steps.
         if i%k == 0:
             action = agent.getAction( Img2Frame(obs[i:i+4,:,:,:]) )      
+
+        # Uncomment to render the gameplay at 60fps.
         #time.sleep(0.016)                                               
         #env.render()
-        #print(action)
+        
+        # Perform the action and save relevant values.
         observation, reward, done, info = env.step(action)
-
         obs[i+4,:,:,:] = preprocess(observation)[np.newaxis]
         actions[i+4,0] = action
         rewards[i+4,0] = reward
         ep_rewards[num_episodes,0] += reward 
 
+        #If an episode is over increment num_episodes and reset the envirinment.
         if done:
             num_episodes = num_episodes + 1
             env.reset()
@@ -126,22 +142,22 @@ def collectObs(samples,k,envName,agent):
 
 def createPolicy(policyType ,num_actions):
 
-    """ Initialises linear model objects from OLS linear regression, LASSO and ridge regression.
-        One model is initalised for each action.
+    """ Input: policyType, a string from 'lr', 'l1' and 'l2' for OLS, LASSO and ridge respectively. 
+               num_actions specifies how many policy objects to initialise, one for each action.
 
-        Input: policyType, a string from 'lr', 'l1' and 'l2' for OLS, LASSO and ridge respectively. 
-               num_actions specifies how many policy objects to initialise.
+        Returns: An array containing 4 linear model objects one for each action."""
 
-        Returns: An array containing 4 linear models one for each action."""
-
+    # Used to initialise weights to 0. 
     initialisex = np.random.randn(4,400)
     initialisey = np.random.randn(4,1)
 
     policy = []
+
+    # Depending on policyType, create a list of the desired linear models.
     if policyType == 'lr':
         for i in range(num_actions):
             policy.append([lm.LinearRegression(),StandardScaler()])     
-            policy[i][0].fit(initialisex,initialisey)                                # Initialises weights to zero
+            policy[i][0].fit(initialisex,initialisey)                                
     if policyType == 'l1':
         for i in range(num_actions):
             policy.append([lm.Lasso(),StandardScaler()])
@@ -153,24 +169,32 @@ def createPolicy(policyType ,num_actions):
     return policy        
 
 def Img2Frame(observation):
+    """ Input: observation, an array of shape (samples*4,84,84,1)
+        Returns: observation as array of shape (samples,84,84,4). """
+
     observations = np.moveaxis(observation,3,1).reshape((-1,4,84,84))
     observation = np.moveaxis(observations,1,3)
     return observation
 
 def preprocess(observation):    
 
-    """ Converts single RGB image into an image with 1 bit colour of size 84,84,1.
-
-        Input: An image of of shape (210,160,3) with 8 bit colour.
+    """ Input: An image of of shape (210,160,3) with 8 bit colour.
 
         Returns: An image of shape shape (84,84,1) with 1 bit colour. """
-
+    # Convert to grey scale.
     observation = cv2.cvtColor(cv2.resize(observation,(84,110)), cv2.COLOR_BGR2GRAY)
-    observation = observation[26:110,:]                                                         # get rid of first 27 rows of image
+    
+    # Get rid of first 27 rows of image since they are just the score.
+    observation = observation[26:110,:]                                                         
+    
+    # Convert to 1 bit colour.
     ret, observation = cv2.threshold(observation,1,1,cv2.THRESH_BINARY)
     return np.reshape(observation,(84,84,1))
     
 def standardize(state):
+
+    """ Input: State of shape (samples,16,16,5)
+        Returns: Standard deviation and mean of states and flattened state of shape (samples,400) """
     state_temp = np.zeros((state.shape[0],400))
     state = np.moveaxis(state,3,1)
     for i in range(state.shape[0]):

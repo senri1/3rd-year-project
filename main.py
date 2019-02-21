@@ -12,9 +12,9 @@ import numpy as np
 # 
 # drate - The rate at which we decay the chance of taking random action.
 #         
-samples = 2000
+samples = 200
 encoder_samples = 100000
-iterations = 30                       
+iterations = 3                       
 episodic_rewards = np.zeros((20000,1))
 total_ep = 0
 drate =  0.93              
@@ -42,7 +42,9 @@ for n in range(iterations):
         # 2) Get states that will be used to train the policy.
         #    observation            -> encoder(observation)   -> flatten(encoder(observation))    
         #    (samples*4, 84, 84, 1) -> (samples*4, 16, 16, 5) -> (samples*4-4, 400)
+        #    After getting the states, get the training data.
         states = agent.getState(observation) 
+        X,Y = agent.getTrainingData(states,actions[4:,:],rewards[4:,:])
 
         # Print useful information
         print('Iteration: ',n)
@@ -54,9 +56,9 @@ for n in range(iterations):
                 weight = agent.myPolicy[i][0].coef_
                 print('Sum of state vectors: ',np.sum(states[i,:]))
                 print('Sum of current weights:', np.sum(weight) )
-        
-        # 3) Improve policy using the states
-        agent.improve_policy(states,actions[4:,:],rewards[4:,:]) 
+
+        # 3) Improve policy
+        agent.improve_policy(X,Y) 
 
         # 4) Decrease epsilon untill it is 0.01. Porbability of random action decreases
         #    down to 0.01.
@@ -68,10 +70,14 @@ for n in range(iterations):
     except:
            agent.save_policy()
            np.save('observation',observation)
+           np.save('states', states)
            np.save('actions',actions)
            np.save('rewards',rewards)
            np.save('num_episodes',num_episodes)
            np.save('ep_reward',ep_reward)
+
+plt.scatter(np.arange(Y[0].size),(agent.myPolicy[0][0].predict(X[0])-Y[0]))
+plt.show()
 
 # Save policy, print useful info and plot average reward per episode vs iterations
 agent.save_policy()
@@ -81,7 +87,13 @@ plt.ylabel('Average reward per episode')
 plt.xlabel('Iteration')
 plt.show()
 
-#fig = plt.figure(figsize=(8, 8))
+
+
+
+
+
+""" IGNOREEEEEEEEE
+fig = plt.figure(figsize=(8, 8))
 fig1 = plt.figure(figsize=(8, 8))
 ax = []
 ax1 = []
@@ -103,4 +115,4 @@ for j in range(1,int(columns*rows/2) ):
         ax1[-1].set_title("Reconstruction: "+str(j))
         plt.imshow( agent.CAE.predict( Img2Frame( observation[plot_img[j-1]:plot_img[j-1]+4,:,:,:]))[0,:,:,0] )
 
-plt.show()
+plt.show() """

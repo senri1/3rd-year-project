@@ -149,7 +149,7 @@ class myAgent:
         
         return states
 
-    def improve_policy(self,states,actions,rewards):
+    def getTrainingData(self,states,actions,rewards):
 
         """ Input: states is output of encoder(observation) with size (steps-4,400), 
                    actions and rewards are arrays with size (steps-4,1)
@@ -182,10 +182,14 @@ class myAgent:
             Y[actions[i,0]][idx,0] = rewards[i] + self.disc_factor * np.max(self.getQvalues(states[i+1]))
             actionCount[0,actions[i,0]] += 1
         
+        return X,Y
+
+    def improve_policy(self,X,Y):
+        
         # For each action fit a linear model with squared error loss: ( w.s - r(s) + y*Q(s') )^2.
         # Don't fit if there is no data, in the case an action was never taken.
         for n in range(self.num_actions):
-            if(actionCount[0,n] != 0):           
+            if(X[n].size != 0):           
                 self.myPolicy[n][0].fit(X[n],Y[n])
         
         return self.myPolicy

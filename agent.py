@@ -89,7 +89,7 @@ class myAgent:
         
         return Qvalues
 
-    def getAction(self,frames):s
+    def getAction(self,frames):
 
         """ Input: frames is an input of shape (1,84,84,4)
 
@@ -103,11 +103,12 @@ class myAgent:
         else:
             # Use encoder to get state of shape (1,5,5,16) the convert to shape (1,400) 
             state = self.encoder.predict(frames)
-            stateMean0 = standardize(state)
-
+            
+            _,_,state = np.asarray(standardize(state))
+            
             # Standardize then get list of Q values for each action and generate random probability
-            stateMean0 = states - self.mean
-            states = np.divide(stateMean0, self.sd, out=np.zeros_like(stateMean0), where=self.sd!=0)
+            state = state - self.mean
+            state = np.divide(state, self.sd, out=np.zeros_like(state), where=self.sd!=0)
             Qvalues = self.getQvalues(state)
             probability = np.random.random_sample()
 

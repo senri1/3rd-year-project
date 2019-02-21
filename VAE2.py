@@ -147,9 +147,9 @@ def createPolicy(policyType ,num_actions):
 
         Returns: An array containing 4 linear model objects one for each action."""
 
-    # Used to initialise weights to 0. 
-    initialisex = np.random.randn(4,400)
-    initialisey = np.random.randn(4,1)
+    # Used to initialise weights to random values. 
+    initialisex = np.random.randn(4,400)*10
+    initialisey = np.random.randn(4,1)*10
 
     policy = []
 

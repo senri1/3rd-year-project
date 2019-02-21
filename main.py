@@ -14,7 +14,7 @@ import numpy as np
 #         
 samples = 2000
 encoder_samples = 100000
-iterations = 100                       
+iterations = 30                       
 episodic_rewards = np.zeros((20000,1))
 total_ep = 0
 drate =  0.93              
@@ -39,17 +39,21 @@ for n in range(iterations):
         total_ep += num_episodes
         avrg_reward[n,0] = np.mean(ep_reward[0:num_episodes,0])
         
+        # 2) Get states that will be used to train the policy.
+        #    observation            -> encoder(observation)   -> flatten(encoder(observation))    
+        #    (samples*4, 84, 84, 1) -> (samples*4, 16, 16, 5) -> (samples*4-4, 400)
+        states = agent.getState(observation) 
+
         # Print useful information
         print('Iteration: ',n)
         print('Number of episodes this iteration: ',num_episodes)
         print('Average reward per episode: ', np.mean(ep_reward[0:num_episodes,0]))
         print('Standard deviation of rewards: ', np.std(ep_reward[0:num_episodes,0]))
         print('Current epsilon: ',agent.epsilon)
-
-        # 2) Get states that will be used to train the policy.
-        #    observation            -> encoder(observation)   -> flatten(encoder(observation))    
-        #    (samples*4, 84, 84, 1) -> (samples*4, 16, 16, 5) -> (samples*4-4, 400)
-        states = agent.getState(observation) 
+        for i in range(4):
+                weight = agent.myPolicy[i][0].coef_
+                print('Sum of state vectors: ',np.sum(states[i,:]))
+                print('Sum of current weights:', np.sum(weight) )
         
         # 3) Improve policy using the states
         agent.improve_policy(states,actions[4:,:],rewards[4:,:]) 

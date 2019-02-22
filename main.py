@@ -45,6 +45,9 @@ for n in range(iterations):
         #    After getting the states, get the training data.
         states = agent.getState(observation) 
         X,Y = agent.getTrainingData(states,actions[4:,:],rewards[4:,:])
+        np.save('X'+str(n),X[0])
+        np.save('Y'+str(n),Y[0])
+        np.save('Xw'+str(n),agent.myPolicy[0][0].predict(X[0]))
 
         # Print useful information
         print('Iteration: ',n)
@@ -76,7 +79,9 @@ for n in range(iterations):
            np.save('num_episodes',num_episodes)
            np.save('ep_reward',ep_reward)
 
-plt.scatter(np.arange(Y[0].size),(agent.myPolicy[0][0].predict(X[0])-Y[0]))
+plt.scatter(np.arange(Y[0].size),Y[0],color = 'red')
+plt.scatter(np.arange(Y[0].size),agent.myPolicy[0][0].predict(X[0]),color='blue')
+plt.scatter(np.arange(Y[0].size),(agent.myPolicy[0][0].predict(X[0])-Y[0]),color='green')
 plt.show()
 
 # Save policy, print useful info and plot average reward per episode vs iterations
@@ -102,13 +107,13 @@ plot_img = np.random.randint(low=0,high = observation.shape[0]-4,size=18)
 columns = 6
 rows = 6       
                
-"""for j in range(1,int(columns*rows/2) ):
+for j in range(1,int(columns*rows/2) ):
         ax.append ( fig.add_subplot(rows, columns, j) )
         ax[-1].set_title("Observation: "+str(j))
         plt.imshow(observation[plot_img[j-1],:,:,0])
 
 plt.show()
-"""
+
 
 for j in range(1,int(columns*rows/2) ):
         ax1.append(fig1.add_subplot(rows, columns, j))

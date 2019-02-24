@@ -12,12 +12,12 @@ import numpy as np
 # 
 # drate - The rate at which we decay the chance of taking random action.
 #         
-samples = 200
+samples = 2000
 encoder_samples = 100000
-iterations = 3                       
+iterations = 100                       
 episodic_rewards = np.zeros((20000,1))
 total_ep = 0
-drate =  0.93              
+drate =  0.94              
 avrg_reward = np.zeros((iterations,1))
 
 agent = myAgent()
@@ -45,9 +45,6 @@ for n in range(iterations):
         #    After getting the states, get the training data.
         states = agent.getState(observation) 
         X,Y = agent.getTrainingData(states,actions[4:,:],rewards[4:,:])
-        np.save('X'+str(n),X[0])
-        np.save('Y'+str(n),Y[0])
-        np.save('Xw'+str(n),agent.myPolicy[0][0].predict(X[0]))
 
         # Print useful information
         print('Iteration: ',n)
@@ -56,7 +53,7 @@ for n in range(iterations):
         print('Standard deviation of rewards: ', np.std(ep_reward[0:num_episodes,0]))
         print('Current epsilon: ',agent.epsilon)
         for i in range(4):
-                weight = agent.myPolicy[i][0].coef_
+                weight = agent.myPolicy[i].getWeights()
                 print('Sum of state vectors: ',np.sum(states[i,:]))
                 print('Sum of current weights:', np.sum(weight) )
 
@@ -72,17 +69,12 @@ for n in range(iterations):
     
     except:
            agent.save_policy()
-           np.save('observation',observation)
-           np.save('states', states)
-           np.save('actions',actions)
-           np.save('rewards',rewards)
-           np.save('num_episodes',num_episodes)
-           np.save('ep_reward',ep_reward)
-
-plt.scatter(np.arange(Y[0].size),Y[0],color = 'red')
-plt.scatter(np.arange(Y[0].size),agent.myPolicy[0][0].predict(X[0]),color='blue')
-plt.scatter(np.arange(Y[0].size),(agent.myPolicy[0][0].predict(X[0])-Y[0]),color='green')
-plt.show()
+           np.save(os.getcwd() + '/debug/observation',observation)
+           np.save(os.getcwd() + '/debug/states', states)
+           np.save(os.getcwd() + '/debug/actions',actions)
+           np.save(os.getcwd() + '/debug/rewards',rewards)
+           np.save(os.getcwd() + '/debug/num_episodes',num_episodes)
+           np.save(os.getcwd() + '/debug/ep_reward',ep_reward)
 
 # Save policy, print useful info and plot average reward per episode vs iterations
 agent.save_policy()
@@ -120,4 +112,14 @@ for j in range(1,int(columns*rows/2) ):
         ax1[-1].set_title("Reconstruction: "+str(j))
         plt.imshow( agent.CAE.predict( Img2Frame( observation[plot_img[j-1]:plot_img[j-1]+4,:,:,:]))[0,:,:,0] )
 
-plt.show() """
+plt.show() 
+
+plt.scatter(np.arange(Y[0].size),Y[0],color = 'red')
+plt.scatter(np.arange(Y[0].size),agent.myPolicy[0].predict(X[0]),color='blue')
+plt.scatter(np.arange(Y[0].size),(agent.myPolicy[0].predict(X[0])-Y[0]),color='green')
+plt.show()
+
+np.save(os.getcwd() + '/debug/X'+str(n),X[0])
+np.save(os.getcwd() + '/debug/Y'+str(n),Y[0])
+np.save(os.getcwd() + '/debug/Xw'+str(n),agent.myPolicy[0].predict(X[0]))
+"""

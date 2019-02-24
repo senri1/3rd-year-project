@@ -44,36 +44,32 @@ class myAgent:
         """ This method loads a convolutional autoencoder trained on the environment specified in self.env, as well as
             the mean and standard deviation of the states obtained from the training data used to train the CAE. """
 
-        self.CAE = tf.keras.models.load_model( os.getcwd() + '/CAE_' + self.env + '.h5' )
-        self.encoder = tf.keras.models.load_model( os.getcwd() + '/encoder_' + self.env + '.h5')
-        self.decoder = tf.keras.models.load_model( os.getcwd() + '/CAE_' + self.env + '.h5' )
-        self.mean = np.load('mean.npy')
-        self.sd = np.load('sd.npy')
+        self.CAE = tf.keras.models.load_model( os.getcwd() + '/saved_models/CAE_' + self.env + '.h5' )
+        self.encoder = tf.keras.models.load_model( os.getcwd() + '/saved_models/encoder_' + self.env + '.h5')
+        self.decoder = tf.keras.models.load_model( os.getcwd() + '/saved_models/CAE_' + self.env + '.h5' )
+        self.mean = np.load(os.getcwd() + '/saved_models/mean.npy')
+        self.sd = np.load(os.getcwd() + '/saved_models/sd.npy')
         return self.encoder
 
     def save_encoder(self):
         """ saves the CAE as well as the mean and standard deviation of states obtained from the data it was trained on."""
 
-        self.CAE.save('CAE_' + self.env + '.h5')
-        self.encoder.save('encoder_' + self.env + '.h5')
-        self.decoder.save('decoder_' + self.env + '.h5')
-        np.save('mean',self.mean)
-        np.save('sd',self.sd)
+        self.CAE.save(os.getcwd() + '/saved_models/CAE_' + self.env + '.h5')
+        self.encoder.save(os.getcwd() +'/saved_models/encoder_' + self.env + '.h5')
+        self.decoder.save(os.getcwd() +'/saved_models/decoder_' + self.env + '.h5')
+        np.save(os.getcwd() + '/saved_models/mean',self.mean)
+        np.save(os.getcwd() +'/saved_models/sd',self.sd)
 
     def save_policy(self):
-        with open("policies.pckl", "wb") as f:
-            for policy in self.myPolicy:
-                pickle.dump(policy, f)
+        with open(os.getcwd() +'/saved_models/policies.pckl', "wb") as f:
+            pickle.dump(self.myPolicy, f)
     
     def load_policy(self):
 
         self.myPolicy = []
-        with open("policies.pckl", "rb") as f:
-            while True:
-                try:
-                    self.myPolicy.append(pickle.load(f))
-                except EOFError:
-                    break
+        with open(os.getcwd() +'/saved_models/policies.pckl', "rb") as f:
+            self.myPolicy = pickle.load(f)
+
 
     def getQvalues(self,state):
 
@@ -85,7 +81,7 @@ class myAgent:
         for j in range(self.num_actions):
 
                 # Use linear model corresponding to the action to get its Q value
-                Qvalues[0,j] = self.myPolicy[j][0].predict(state.reshape((1,-1)))
+                Qvalues[0,j] = self.myPolicy[j].predict(state.reshape((1,-1)))
         
         return Qvalues
 
@@ -166,7 +162,7 @@ class myAgent:
         # Y: will contain #ofActions arrays of the target value: r(s) + y*Q(s'), the array
         # a target value is stored in is based on the action made in the state for which
         # we are predicting the target value.
-        Y = []
+        Y = [] 
         X = []
 
         # create arrays for training data for each action, each with size equal to the 
@@ -190,7 +186,7 @@ class myAgent:
         # Don't fit if there is no data, in the case an action was never taken.
         for n in range(self.num_actions):
             if(X[n].size != 0):           
-                self.myPolicy[n][0].fit(X[n],Y[n])
+                self.myPolicy[n].fit(X[n],Y[n])
         
         return self.myPolicy
     

@@ -10,6 +10,7 @@ import numpy as np
 import cv2
 import torch 
 import time
+import OLSModel
 
 def ConvAE(train_samples,envName,agent):
 
@@ -156,8 +157,8 @@ def createPolicy(policyType ,num_actions):
     # Depending on policyType, create a list of the desired linear models.
     if policyType == 'lr':
         for i in range(num_actions):
-            policy.append([lm.LinearRegression(),StandardScaler()])     
-            policy[i][0].fit(initialisex,initialisey)                                
+            policy.append(OLSModel.OLS())     
+            policy[i].fit(initialisex,initialisey)                                
     if policyType == 'l1':
         for i in range(num_actions):
             policy.append([lm.Lasso(),StandardScaler()])

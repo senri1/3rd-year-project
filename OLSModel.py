@@ -17,3 +17,9 @@ class OLS:
 
     def setWeights(self,weight):
         self.weights = weight
+    
+    def getSquaredError(self,X,Y):
+        prediction = self.predict(X)
+        error = np.abs(prediction-Y)
+        squared_error = np.matmul(np.transpose(error),error)
+        return squared_error

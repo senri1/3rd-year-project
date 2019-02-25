@@ -109,9 +109,10 @@ def collectObs(samples,k,envName,agent):
 
     # Agents policy needs 4 observations to make action (since 1 state = 4 frames).
     for n in range(4):
-        observation, reward, done, _ = env.step(0)
+        act = np.random.randint(0,high=4)
+        observation, reward, done, _ = env.step(act)
         obs[n,:,:,:] = preprocess(observation)[np.newaxis]
-        actions[n,0] = 0
+        actions[n,0] = act
         rewards[n,0] = reward
         ep_rewards[0,0] += reward
 

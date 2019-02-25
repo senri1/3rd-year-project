@@ -12,14 +12,14 @@ import numpy as np
 # 
 # drate - The rate at which we decay the chance of taking random action.
 #         
-samples = 2000
+samples = 1000
 encoder_samples = 100000
-iterations = 100                       
+iterations = 15                       
 episodic_rewards = np.zeros((20000,1))
 total_ep = 0
-drate =  0.94              
+drate =  0.93              
 avrg_reward = np.zeros((iterations,1))
-
+data = []
 agent = myAgent()
 
 # Uncomment and comment as required.
@@ -45,6 +45,7 @@ for n in range(iterations):
         #    After getting the states, get the training data.
         states = agent.getState(observation) 
         X,Y = agent.getTrainingData(states,actions[4:,:],rewards[4:,:])
+        data.append([X[0], agent.myPolicy[0].predict(X[0]), Y[0],agent.myPolicy[0].getSquaredError(X[0],Y[0])])
 
         # Print useful information
         print('Iteration: ',n)
@@ -55,7 +56,8 @@ for n in range(iterations):
         for i in range(4):
                 weight = agent.myPolicy[i].getWeights()
                 print('Sum of state vectors: ',np.sum(states[i,:]))
-                print('Sum of current weights:', np.sum(weight) )
+                print('Sum of current weights: ', np.sum(weight) )
+                print('Squared error: ', agent.myPolicy[i].getSquaredError(X[i],Y[i]))
 
         # 3) Improve policy
         agent.improve_policy(X,Y) 
@@ -84,7 +86,8 @@ plt.ylabel('Average reward per episode')
 plt.xlabel('Iteration')
 plt.show()
 
-
+with open(os.getcwd() +'/debug/data.pckl', "wb") as f:
+        pickle.dump(data, f)
 
 
 

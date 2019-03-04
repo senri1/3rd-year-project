@@ -136,7 +136,7 @@ class myAgent:
                 frames[i:i+1,:,:,:] = Img2Frame( observation[i+1:i+5,:,:,:] ) 
         
         # Use encoder to get states from frames.
-        # Convert states from shape (numStates,5,5,16) to (numStates,400)
+        # Convert states from shape (numStates,5,5,16) to (numStates,4)
         states = self.encoder.predict(frames)
         _,_,states = standardize(states)
 

@@ -142,7 +142,7 @@ def collectObs(samples,k,envName,agent):
     return obs,actions,rewards,num_episodes,ep_rewards                                                  
 
 
-def createPolicy(policyType ,num_actions):
+def createPolicy(policyType ,num_actions, numFeatrues):
 
     """ Input: policyType, a string from 'lr', 'l1' and 'l2' for OLS, LASSO and ridge respectively. 
                num_actions specifies how many policy objects to initialise, one for each action.
@@ -150,7 +150,7 @@ def createPolicy(policyType ,num_actions):
         Returns: An array containing 4 linear model objects one for each action."""
 
     # Used to initialise weights to random values. 
-    initialisex = np.random.randn(4,400)*10
+    initialisex = np.random.randn(4,numFeatrues)*10
     initialisey = np.random.randn(4,1)*10
 
     policy = []

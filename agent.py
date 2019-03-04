@@ -27,7 +27,7 @@ class myAgent:
         self.CAE = CAE
         self.CAE_loss = 0
         self.policyType = policyType
-        self.myPolicy = createPolicy(self.policyType,self.num_actions)
+        self.myPolicy = createPolicy(self.policyType,self.num_actions,self.state_size)
         self.mean = None
         self.sd = None
     
@@ -37,6 +37,7 @@ class myAgent:
         and the training and validation loss for each epoch."""
 
         self.CAE, self.encoder, self.decoder, self.CAE_loss, self.mean, self.sd = ConvAE(num_samples,self.env,self)
+        self.myPolicy = createPolicy(self.policyType,self.num_actions,np.count_nonzero(self.sd))
         return self.encoder, self.CAE_loss
 
 
@@ -49,6 +50,7 @@ class myAgent:
         self.decoder = tf.keras.models.load_model( os.getcwd() + '/saved_models/CAE_' + self.env + '.h5' )
         self.mean = np.load(os.getcwd() + '/saved_models/mean.npy')
         self.sd = np.load(os.getcwd() + '/saved_models/sd.npy')
+        self.myPolicy = createPolicy(self.policyType,self.num_actions,np.count_nonzero(self.sd))
         return self.encoder
 
     def save_encoder(self):
@@ -105,6 +107,7 @@ class myAgent:
             # Standardize then get list of Q values for each action and generate random probability
             state = state - self.mean
             state = np.divide(state, self.sd, out=np.zeros_like(state), where=self.sd!=0)
+            state = np.delete(state,np.nonzero(self.sd==0),axis=1)
             Qvalues = self.getQvalues(state)
             probability = np.random.random_sample()
 
@@ -142,6 +145,7 @@ class myAgent:
         # Also replace any feature with 0 standard deviation with value 0. 
         statesMean0 = states - self.mean
         states = np.divide(statesMean0, self.sd, out=np.zeros_like(statesMean0), where=self.sd!=0)
+        states = np.delete(states,np.nonzero(self.sd==0),axis=1)
         
         return states
 
@@ -168,7 +172,7 @@ class myAgent:
         # create arrays for training data for each action, each with size equal to the 
         # number of times the action occured.
         for j in range(self.num_actions):
-            X.append( np.zeros( ( np.count_nonzero(actions==j),400 ) ) )
+            X.append( np.zeros( ( np.count_nonzero(actions==j),states.shape[1] ) ) )
             Y.append( np.zeros( ( np.count_nonzero(actions==j),1 ) ) )
 
         # populate each array corresponding to the action taken

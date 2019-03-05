@@ -1,4 +1,4 @@
-from VAE2 import*
+from helperFuncs import*
 from sklearn.linear_model import LinearRegression
 import pickle
 

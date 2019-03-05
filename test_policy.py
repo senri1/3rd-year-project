@@ -1,5 +1,5 @@
 from agent import myAgent
-from VAE2 import *
+from helperFuncs import *
 
 samples = 2000
 episodic_rewards = np.zeros((20000,1))

@@ -1,5 +1,5 @@
 from agent import myAgent
-from VAE2 import*
+from helperFuncs import*
 import matplotlib.pyplot as plt
 import pickle
 import numpy as np

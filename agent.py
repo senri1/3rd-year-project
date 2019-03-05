@@ -1,6 +1,7 @@
 from helperFuncs import*
 from sklearn.linear_model import LinearRegression
 import pickle
+import dill
 
 class myAgent:
 
@@ -62,13 +63,13 @@ class myAgent:
 
     def save_policy(self):
         with open(os.getcwd() +'/saved_models/policies.pckl', "wb") as f:
-            pickle.dump(self.myPolicy, f)
+            dill.dump(self.myPolicy, f)
     
     def load_policy(self):
 
         self.myPolicy = []
         with open(os.getcwd() +'/saved_models/policies.pckl', "rb") as f:
-            self.myPolicy = pickle.load(f)
+            self.myPolicy = dill.load(f)
 
 
     def getQvalues(self,state):

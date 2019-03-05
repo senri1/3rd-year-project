@@ -26,7 +26,7 @@ class OLS:
         return X.mm(self.weights)
 
     def getWeights(self):
-        return self.weights
+        return self.weights.detach().numpy()
 
     def setWeights(self,weight):
         self.weights = torch.from_numpy(weight).float()

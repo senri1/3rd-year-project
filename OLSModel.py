@@ -11,8 +11,8 @@ class OLS:
     
     def fit(self,X,Y):
         learning_rate = 1e-6
-        X = torch.from_numpy(X)
-        Y = torch.from_numpy(Y)
+        X = torch.from_numpy(X).float()
+        Y = torch.from_numpy(Y).float()
         for t in range(500):
             y_pred = X.mm(self.weights)
             loss = (y_pred - Y).pow(2).sum()
@@ -22,16 +22,18 @@ class OLS:
                 self.weights.grad.zero_()
 
     def predict(self,X):
-        X = torch.from_numpy(X)
+        X = torch.from_numpy(X).float()
         return X.mm(self.weights)
 
     def getWeights(self):
         return self.weights
 
     def setWeights(self,weight):
-        self.weights = torch.from_numpy(weight)
+        self.weights = torch.from_numpy(weight).float()
     
     def getSquaredError(self,X,Y):
+        X = torch.from_numpy(X).float()
+        Y = torch.from_numpy(Y).float()
         y_pred = X.mm(self.weights)
         squared_error = (y_pred - Y).pow(2).sum()
         return squared_error

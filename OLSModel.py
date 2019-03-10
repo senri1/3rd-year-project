@@ -13,9 +13,11 @@ class OLS:
         learning_rate = 1e-6
         X = torch.from_numpy(X).float()
         Y = torch.from_numpy(Y).float()
-        for t in range(500):
+        for t in range(2000):
             y_pred = X.mm(self.weights)
             loss = (y_pred - Y).pow(2).sum()
+            if(t%100==0):
+                print("Current loss: ", loss)
             loss.backward()
             with torch.no_grad():
                 self.weights -= learning_rate * self.weights.grad

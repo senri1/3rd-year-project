@@ -2,6 +2,8 @@ from helperFuncs import*
 from sklearn.linear_model import LinearRegression
 import pickle
 import dill
+import tensorflow as tf
+from tensorflow.keras import layers
 
 class myAgent:
 
@@ -71,6 +73,24 @@ class myAgent:
         with open(os.getcwd() +'/saved_models/policies.pckl', "rb") as f:
             self.myPolicy = dill.load(f)
 
+    def create_CNN(self):
+
+        height = 84
+        width = 84
+        channel = 1
+
+        CNN_input = tf.keras.layers.Input( shape = (height,width,channels))
+        CNN = layers.Conv2D( filters = 32, kernel_size = 8, padding = 'valid', strides = 4, activation = 'relu', input_shape = (height,width,channels) ) (CNN_input)
+        CNN = layers.Conv2D( filters = 64, kernel_size = 4, padding = 'valid', strides = 2, activation = 'relu' ) (CNN)
+        CNN = layers.Conv2D( filters = 64, kernel_size = 3, padding = 'valid', strides = 1, activation = 'relu' ) (CNN)
+        CNN = layers.Conv2D( filters = 16, kernel_size = 3, padding = 'valid', strides = 1, activation = 'relu', name='encoder_output' ) (CNN)
+        CNN = tf.keras.Model( encoder_input, CNN )
+
+        CNN.compile(loss='mse',
+             optimizer='adam',
+             metrics=['mse'])
+        
+        return CNN
 
     def getQvalues(self,state):
 

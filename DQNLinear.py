@@ -12,9 +12,9 @@ import numpy as np
 # 
 # drate - The rate at which we decay the chance of taking random action.
 #         
-samples = 1000
+samples = 2000
 encoder_samples = 100000
-iterations = 15                       
+iterations = 40                       
 episodic_rewards = np.zeros((20000,1))
 total_ep = 0
 drate =  0.93              
@@ -57,7 +57,7 @@ for n in range(iterations):
                 weight = agent.myPolicy[i].getWeights()
                 print('Sum of state vectors: ',np.sum(states[i,:]))
                 print('Sum of current weights: ', np.sum(weight) )
-                print('Squared error: ', agent.myPolicy[i].getSquaredError(X[i],Y[i]))
+                #print('Squared error: ', agent.myPolicy[i].getSquaredError(X[i],Y[i]))
 
         # 3) Improve policy
         agent.improve_policy(X,Y) 

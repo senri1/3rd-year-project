@@ -13,3 +13,5 @@ agent = myAgent()
 #agent.load_policy()
 agent.create_CNN()
 
+for n in range(iterations):
+    

@@ -7,10 +7,10 @@ class OLS:
         self.dtype = torch.float
         self.device = torch.device("cpu")
         self.weights = torch.randn(400, 1, device=self.device, dtype=self.dtype, requires_grad=True)
-
+        self.learning_rate = 1e-6
     
     def fit(self,X,Y):
-        learning_rate = 1e-6
+        
         X = torch.from_numpy(X).float()
         Y = torch.from_numpy(Y).float()
         for t in range(2000):

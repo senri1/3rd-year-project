@@ -1,6 +1,6 @@
 from helperFuncs import*
 
-class CNNagent():
+class DQNagent():
     
     def __init__(
         self,
@@ -8,7 +8,7 @@ class CNNagent():
         disc_factor = 0.99,
         num_actions=4
         ):
-        self.CNN = None
+        self.CNN = self.create_CNN()
         self.CNNupdate = None 
         self.disc_factor = disc_factor
         self.epsilon = epsilon
@@ -67,4 +67,4 @@ class CNNagent():
             Y[i,0] = rewards[i] + self.disc_factor * np.max(self.getQvalues(states[i,:,:,:]))
         return states[0:-1,:,:,:],Y
 
-    def improve_policy(self,X,Y)
+    def improve_policy(self,X,Y):

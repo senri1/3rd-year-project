@@ -1,4 +1,28 @@
-from helperFuncs import*
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+import numpy as np
+
+class Qnetwork(torch.nn.Module):
+    def __init__(self,num_actions):
+        super(Qnetwork,self).__init__()
+        self.conv1 = nn.Conv2d(in_channels=4, out_channels=32, kernel_size=8, stride=4, padding=0).cuda()
+        self.conv2 = nn.Conv2d(in_channels=32, out_channels=64, kernel_size=4, stride=2, padding=0).cuda()
+        self.conv3 = nn.Conv2d(in_channels=64, out_channels=64, kernel_size=3, stride=1, padding=0).cuda()
+        self.fc1 = nn.Linear(64 * 7 * 7, 512).cuda()
+        self.fc2 = nn.Linear(512, num_actions).cuda()
+    
+    def forward(self,x):
+        out = F.relu(self.conv1(x))
+        out = F.relu(self.conv2(out))
+        out = F.relu(self.conv3(out))
+        # Resize from (batch_size, 64, 7, 7) to (batch_size,64*7*7)
+        out = out.view(out.size(0), -1)
+        out = F.relu(self.fc1(out))
+        return self.fc2(out)
+
+
+
 
 class DQNagent():
     
@@ -8,39 +32,20 @@ class DQNagent():
         disc_factor = 0.99,
         num_actions=4
         ):
-        self.CNN = self.create_CNN()
-        self.CNNupdate = None 
+        self.Qnetwork = Qnetwork(num_actions)
+        self.Qnetwork.cuda()
+        self.QnetworkUPDATE = None 
         self.disc_factor = disc_factor
         self.epsilon = epsilon
         self.num_actions = num_actions
 
-    def create_CNN(self):
-        
-        height = 84
-        width = 84
-        channels = 4
-
-        CNN_input = tf.keras.layers.Input( shape = (height,width,channels))
-        self.CNN = layers.Conv2D( filters = 32, kernel_size = 8, padding = 'valid', strides = 4, activation = 'relu', input_shape = (height,width,channels) ) (CNN_input)
-        self.CNN = layers.Conv2D( filters = 64, kernel_size = 4, padding = 'valid', strides = 2, activation = 'relu' ) (self.CNN)
-        self.CNN = layers.Conv2D( filters = 64, kernel_size = 3, padding = 'valid', strides = 1, activation = 'relu' ) (self.CNN)
-        self.CNN = layers.Flatten() (self.CNN)
-        self.CNN = layers.Dense(units = 256, activation = 'relu') (self.CNN)
-        self.CNN = layers.Dense(units = 4) (self.CNN)
-        self.CNN = tf.keras.Model( CNN_input, self.CNN )
-
-        self.CNN.compile(loss='mse',
-                optimizer='adam',
-                metrics=['mse'])
-        
-        return self.CNN
     
     def getQvalues(self,state):
-        return self.CNN.predict(state)
+        return self.Qnetwork(state)
 
     def getAction(self,state):
 
-        if self.CNN == None:
+        if self.Qnetwork == None:
             return np.random.randint(0,high=4)
 
         else:
@@ -49,22 +54,8 @@ class DQNagent():
             probability = np.random.random_sample()
 
             if self.epsilon <= probability:
-                action = np.argmax(Qvalues)
+                maxq, action = Qvalues.max(1)
             else:
                 action = np.random.randint(0,high=4)
             return action
 
-    def getState(self,observation):
-        numStates = observation.shape[0] - 4
-        states = np.zeros( ( numStates ,84,84,4  ) )
-        for i in range(numStates):
-            states[i:i+1,:,:,:] = Img2Frame( observation[i+1:i+5,:,:,:] ) 
-        return states
-
-    def getTrainingData(self,states,actions,rewards):
-        Y = np.zeros((actions.shape[0]-1,1))
-        for i in range(actions.shape[0]-1):
-            Y[i,0] = rewards[i] + self.disc_factor * np.max(self.getQvalues(states[i,:,:,:]))
-        return states[0:-1,:,:,:],Y
-
-    def improve_policy(self,X,Y):

@@ -32,20 +32,20 @@ class DQNagent():
         disc_factor = 0.99,
         num_actions=4
         ):
-        self.Qnetwork = Qnetwork(num_actions)
-        self.Qnetwork.cuda()
-        self.QnetworkUPDATE = None 
+        self.Q = Qnetwork(num_actions)
+        self.Q.cuda()
+        self.QTarget = self.Q 
         self.disc_factor = disc_factor
         self.epsilon = epsilon
         self.num_actions = num_actions
 
     
     def getQvalues(self,state):
-        return self.Qnetwork(state)
+        return self.Q(state)
 
     def getAction(self,state):
 
-        if self.Qnetwork == None:
+        if self.Q == None:
             return np.random.randint(0,high=4)
 
         else:

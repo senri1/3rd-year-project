@@ -1,7 +1,8 @@
 from collections import deque
 import random
 import numpy as np
-import torch 
+import torch
+
 
 class ReplayMemory():
     def __init__(self, size, batch_size):
@@ -21,22 +22,24 @@ class ReplayMemory():
     def get_batch(self):
         batch = random.sample(self.data, self.batch_size)
         batch = np.array(batch)
+        statenp = np.zeros((self.batch_size,4,84,84))
+        next_statenp = np.zeros((self.batch_size,4,84,84))
 
         for n in range(batch.shape[0]):
-            batch[n,1] = LazyFrame2Torch(batch[n,1])
-            batch[n,3] = LazyFrame2Torch(batch[n,3])
+            statenp[n,:,:,:] = (np.moveaxis(batch[n,0].__array__()[np.newaxis,:,:,:],3,1)).astype(float)
+            next_statenp[n,:,:,:] = (np.moveaxis(batch[n,3].__array__()[np.newaxis,:,:,:],3,1)).astype(float)
 
-        state = torch.from_numpy(batch[:,0]).to('cuda',torch.float)
-        action = torch.from_numpy(batch[:,1]).to('cuda',torch.float)
-        reward = torch.from_numpy(batch[:,2]).to('cuda',torch.float)
-        next_state = torch.from_numpy(batch[:,3]).to('cuda',torch.float)
-        not_done = torch.from_numpy(batch[:,4]).to('cuda',torch.float)
+        state = torch.from_numpy(statenp).float().to('cuda')
+        action = torch.from_numpy(batch[:,1].astype(float)).long().to('cuda')
+        reward = torch.from_numpy(batch[:,2].astype(float)).float().to('cuda')
+        next_state = torch.from_numpy(next_statenp).float().to('cuda')
+        not_done = torch.from_numpy(batch[:,4].astype(float)).float().to('cuda')
         
         return state, action, reward, next_state, not_done
 
 
 def LazyFrame2Torch(x):
-        x = x.__array__()[np.newaxis,:,:,:]
-        x = np.moveaxis(x,3,1)
-        x = torch.from_numpy(x).to('cuda',torch.float)
-        return x
+        y = x.__array__()[np.newaxis,:,:,:]
+        y = np.moveaxis(y,3,1)
+        y = torch.from_numpy(y).float().to('cuda')
+        return y

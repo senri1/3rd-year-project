@@ -30,12 +30,10 @@ frames = 1000
 episodes = 0
 batch_size = 32
 memory_size = 500000
-memory_start_size = int(memory_size/20)
+memory_start_size = int(memory_size/1000)
 learning_rate = 0.00025
 update_frequency = 10000
-discount = 0.99
-evaluation_frequency = frames/200
-evaluation_data=[]
+evaluation_frequency = frames/250
 
 memory = ReplayMemory(memory_size, batch_size)
 agent = DQNagent()
@@ -45,73 +43,85 @@ collectRandomData(memory,memory_start_size,env_name)
 print(memory.current_size)
 
 n = 0
+j = 0
 
+try:
+    while n in range(frames):
 
-while n in range(frames):
-
-    done = False
-    initial_state = env.reset()
-    action = agent.getAction(LazyFrame2Torch(initial_state)) 
-    state, reward, done, _ = env.step(action)
-    memory.add(initial_state,action,reward,state,done )
-    n += 1
-        
-    while (not done) and (n<frames):
-
-        action = agent.getAction(LazyFrame2Torch(state)) 
-        next_state,reward,done,_ = env.step(action)
-        memory.add(state,action,reward,next_state,done)
-        state = next_state
-        agent.decrease_epsilon(n)
+        done = False
+        initial_state = env.reset()
+        action = agent.getAction(LazyFrame2Torch(initial_state)) 
+        state, reward, done, _ = env.step(action)
+        memory.add(initial_state,action,reward,state,done )
         n += 1
+            
+        while (not done) and (n<frames):
 
-        if memory.current_size >= batch_size:
+            action = agent.getAction(LazyFrame2Torch(state)) 
+            next_state,reward,done,_ = env.step(action)
+            memory.add(state,action,reward,next_state,done)
+            state = next_state
+            agent.decrease_epsilon(n)
+            n += 1
 
-            # Get batch
-            state_batch, action_batch, reward_batch, next_state_batch, not_done_batch = memory.get_batch()
+            if memory.current_size >= batch_size:
 
-            # Zero any graidents
-            optimizer.zero_grad()
-                
-            # Get the q values corresponding to action taken
-            qvalues = agent.Q(state_batch)[range(batch_size), action_batch]
+                # Get batch
+                state_batch, action_batch, reward_batch, next_state_batch, not_done_batch = memory.get_batch()
 
-            # Get the target q values 
-            qtargetValues, _ = torch.max(agent.QTarget(next_state_batch), 1)
+                # Zero any graidents
+                optimizer.zero_grad()
+                    
+                # Get the q values corresponding to action taken
+                qvalues = agent.Q(state_batch)[range(batch_size), action_batch]
 
-            # set final frame in episode to have q value equal to reward
-            qtargetValues = not_done_batch * qtargetValues
+                # Get the target q values 
+                qtargetValues, _ = torch.max(agent.QTarget(next_state_batch), 1)
 
-            # calculate target q value r + y * Qt
-            qtarget = reward_batch + agent.disc_factor * qtargetValues
+                # set final frame in episode to have q value equal to reward
+                qtargetValues = not_done_batch * qtargetValues
 
-            # don't calculate gradients of target network
-            qtarget = qtarget.detach()
+                # calculate target q value r + y * Qt
+                qtarget = reward_batch + agent.disc_factor * qtargetValues
 
-            # loss is mean squared loss 
-            loss = F.mse_loss(qvalues,qtarget)
+                # don't calculate gradients of target network
+                qtarget = qtarget.detach()
 
-            # calculate gradients of q network parameters
-            loss.backward()
+                # loss is mean squared loss 
+                loss = F.mse_loss(qvalues,qtarget)
 
-            # update paramters a single step
-            optimizer.step()
+                # calculate gradients of q network parameters
+                loss.backward()
 
-        if n % update_frequency == 0:
-            #start_time = time.monotonic()    
-            agent.QTarget.load_state_dict(agent.Q.state_dict())
-            #end_time = time.monotonic()
-            #print('Block 4 time: ',timedelta(seconds=end_time - start_time))
-        
+                # update paramters a single step
+                optimizer.step()
 
-        if n % evaluation_frequency == 0:
-            torch.save(agent.Q.state_dict,'saved_models/Qnetwork' + str(int(n/evaluation_frequency)) + '.pth')
- 
+            if n % update_frequency == 0:
+                #start_time = time.monotonic()    
+                agent.QTarget.load_state_dict(agent.Q.state_dict())
+                #end_time = time.monotonic()
+                #print('Block 4 time: ',timedelta(seconds=end_time - start_time))
+            
+
+            if n % evaluation_frequency == 0:
+                torch.save(agent.Q.state_dict(),'saved_models/Qnetwork' + str(j) + '.pth')
+                print(j)
+                j+=1
+
+    
             
     episodes += 1
     print(episodes)
 
-torch.save(agent.Q,'saved_models/QnetworkFINAL')
+except:
+    torch.save(agent.Q.state_dict(),'saved_models/QnetworkBACKUP.pth')
+    np.save('log/idx',j)
+    print('Final avergae score: ', collectMeanScore(agent,5,0.005,env_name))
+    print("Total number of frames: ", frames)
+    print("Total number of episodes: ", episodes)
+
+torch.save(agent.Q.state_dict(),'saved_models/QnetworkFINAL.pth')
+np.save('idx',j)
 print('Final avergae score: ', collectMeanScore(agent,5,0.005,env_name))
 print("Total number of frames: ", frames)
 print("Total number of episodes: ", episodes)

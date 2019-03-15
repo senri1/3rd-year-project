@@ -83,13 +83,13 @@ def collectMeanScore(agent,steps,epsilon,env_name):
         if done:
             env.reset()
             episodes += 1
-            average_score = rewards_sum/episodes
 
+    average_score = rewards_sum/episodes
     env.close()
     return float(average_score)
 
 def evaluateStateQvalues(agent):
-    s = np.load('stateEval.npy') 
+    s = np.load('log/stateEval.npy') 
     s = torch.from_numpy(s).float().to('cuda')
     with torch.no_grad():
         q = agent.Q(s)

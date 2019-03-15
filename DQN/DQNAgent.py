@@ -34,14 +34,16 @@ class DQNagent():
         ):
         self.Q = Qnetwork(num_actions)
         self.Q.cuda()
-        self.QTarget = self.Q 
+        self.QTarget = Qnetwork(num_actions).cuda()
+        self.QTarget.load_state_dict(self.Q.state_dict())
         self.disc_factor = disc_factor
         self.epsilon = epsilon
         self.num_actions = num_actions
 
     
     def getQvalues(self,state):
-        return self.Q(state)
+        with torch.no_grad():
+            return self.Q(state)
 
     def getAction(self,state):
 
@@ -59,3 +61,23 @@ class DQNagent():
                 action = np.random.randint(0,high=4)
             return action
 
+    def decrease_epsilon(self,steps):
+        min_epsilon = 0.1
+        init_epsilon = 1.0
+        eps_decay_steps = 1000000.0
+        self.epsilon = max(min_epsilon, init_epsilon - (init_epsilon-min_epsilon) * float(steps)/eps_decay_steps)
+
+
+
+"""
+done = False
+initial_state = env.reset()
+action = agent.getAction(LazyFrame2Torch(initial_state)) 
+state, reward, done, _ = env.step(action)
+memory.add(initial_state,action,reward,state,done )
+
+action = agent.getAction(LazyFrame2Torch(state)) 
+next_state,reward,done,_ = env.step(action)
+memory.add(state,action,reward,next_state,done)
+state = next_state
+"""

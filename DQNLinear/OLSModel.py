@@ -1,41 +1,40 @@
 import numpy as np
 import torch
+import torch.nn.functional as F
 
 class OLS:
 
-    def __init__(self):
+    def __init__(self,l2):
         self.dtype = torch.float
         self.device = torch.device("cpu")
-        self.weights = torch.randn(400, 1, device=self.device, dtype=self.dtype, requires_grad=True)
-        self.learning_rate = 1e-6
+        self.Linear = torch.nn.Linear(400,1)
+        self.learning_rate = 0.00025
+        self.optimizer = torch.optim.SGD(self.Linear.parameters(), lr = self.learning_rate, weight_decay=l2)
     
-    def fit(self,X,Y):
+    def fit(self,X,Y,steps):
         
         X = torch.from_numpy(X).float()
         Y = torch.from_numpy(Y).float()
-        for t in range(2000):
-            y_pred = X.mm(self.weights)
-            loss = (y_pred - Y).pow(2).sum()
-            if(t%100==0):
-                print("Current loss: ", loss)
+        for t in range(steps):
+            self.optimizer.zero_grad()
+            y_pred = self.Linear(X)
+            loss = F.mse_loss(y_pred,Y)
             loss.backward()
-            with torch.no_grad():
-                self.weights -= learning_rate * self.weights.grad
-                self.weights.grad.zero_()
+            self.optimizer.step()
 
     def predict(self,X):
-        X = torch.from_numpy(X).float()
-        return X.mm(self.weights)
+        x = torch.from_numpy(X).float()
+        with torch.no_grad():
+            y = self.Linear(x)
+        return float(y)
 
     def getWeights(self):
-        return self.weights.detach().numpy()
-
-    def setWeights(self,weight):
-        self.weights = torch.from_numpy(weight).float()
+        return self.Linear.parameters()
     
     def getSquaredError(self,X,Y):
         X = torch.from_numpy(X).float()
         Y = torch.from_numpy(Y).float()
-        y_pred = X.mm(self.weights)
-        squared_error = (y_pred - Y).pow(2).sum()
-        return squared_error
+        with torch.no_grad():
+            y_pred = self.Linear(X)
+            squared_error = F.mse_loss(y_pred,Y)
+        return float(squared_error)

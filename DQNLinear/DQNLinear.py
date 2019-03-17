@@ -1,128 +1,127 @@
-from agent import myAgent
-from helperFuncs import*
-import matplotlib.pyplot as plt
-import pickle
-import numpy as np
+import numpy as np 
+import gym
+import torch
+import torch.nn.functional as F
+from gym import wrappers
+from atari_wrappers import wrap_deepmind
+from atari_wrappers import make_atari
+from LinearAgent import Linearagent
+from LinearAgent import getStandard
+from ReplayMemory import *
+import time
+from datetime import timedelta
 
-# samples - The amount of data used each iteration to improve the policy.
-#           One sample is 4 frames of an observation from the game. 
-
-# encoder_samples - The number of samples to train the encoder. One sample
-#                   4 frames from the game. 
-# 
-# drate - The rate at which we decay the chance of taking random action.
-#         
-samples = 2000
-encoder_samples = 100000
-iterations = 40                       
-episodic_rewards = np.zeros((20000,1))
-total_ep = 0
-drate =  0.93              
-avrg_reward = np.zeros((iterations,1))
-data = []
-agent = myAgent()
-
-# Uncomment and comment as required.
-#agent.create_encoder(encoder_samples)
-#agent.load_policy()
-agent.load_encoder()
-
-for n in range(iterations):
-
-    # Try taining the agent, if theres an error save the policy and data.
-    try:
-        
-        # 1) Collect training data to use to train the agent. If agent has no policy, random
-        #    actions will be used to collect the data. 
-        observation,actions,rewards,num_episodes,ep_reward = collectObs(samples,4,'Breakout-v0',agent)     
-        episodic_rewards[total_ep:total_ep+num_episodes,0] = ep_reward[0:num_episodes,0]
-        total_ep += num_episodes
-        avrg_reward[n,0] = np.mean(ep_reward[0:num_episodes,0])
-        
-        # 2) Get states that will be used to train the policy.
-        #    observation            -> encoder(observation)   -> flatten(encoder(observation))    
-        #    (samples*4, 84, 84, 1) -> (samples*4, 16, 16, 5) -> (samples*4-4, 400)
-        #    After getting the states, get the training data.
-        states = agent.getState(observation) 
-        X,Y = agent.getTrainingData(states,actions[4:,:],rewards[4:,:])
-        data.append([X[0], agent.myPolicy[0].predict(X[0]), Y[0],agent.myPolicy[0].getSquaredError(X[0],Y[0])])
-
-        # Print useful information
-        print('Iteration: ',n)
-        print('Number of episodes this iteration: ',num_episodes)
-        print('Average reward per episode: ', np.mean(ep_reward[0:num_episodes,0]))
-        print('Standard deviation of rewards: ', np.std(ep_reward[0:num_episodes,0]))
-        print('Current epsilon: ',agent.epsilon)
-        for i in range(4):
-                weight = agent.myPolicy[i].getWeights()
-                print('Sum of state vectors: ',np.sum(states[i,:]))
-                print('Sum of current weights: ', np.sum(weight) )
-                #print('Squared error: ', agent.myPolicy[i].getSquaredError(X[i],Y[i]))
-
-        # 3) Improve policy
-        agent.improve_policy(X,Y) 
-
-        # 4) Decrease epsilon untill it is 0.01. Porbability of random action decreases
-        #    down to 0.01.
-        if agent.epsilon>0.01:         
-                agent.epsilon *= drate
-        else:
-                agent.epsilon = 0.01
-    
-    except:
-           agent.save_policy()
-           np.save(os.getcwd() + '/debug/observation',observation)
-           np.save(os.getcwd() + '/debug/states', states)
-           np.save(os.getcwd() + '/debug/actions',actions)
-           np.save(os.getcwd() + '/debug/rewards',rewards)
-           np.save(os.getcwd() + '/debug/num_episodes',num_episodes)
-           np.save(os.getcwd() + '/debug/ep_reward',ep_reward)
-
-# Save policy, print useful info and plot average reward per episode vs iterations
-agent.save_policy()
-print("Total number of episodes: ",total_ep)
-plt.scatter(np.arange(1,iterations+1),avrg_reward)
-plt.ylabel('Average reward per episode')
-plt.xlabel('Iteration')
-plt.show()
-
-with open(os.getcwd() +'/debug/data.pckl', "wb") as f:
-        pickle.dump(data, f)
-
-
-
-
-""" IGNOREEEEEEEEE
-fig = plt.figure(figsize=(8, 8))
-fig1 = plt.figure(figsize=(8, 8))
-ax = []
-ax1 = []
-
-plot_img = np.random.randint(low=0,high = observation.shape[0]-4,size=18)
-columns = 6
-rows = 6       
-               
-for j in range(1,int(columns*rows/2) ):
-        ax.append ( fig.add_subplot(rows, columns, j) )
-        ax[-1].set_title("Observation: "+str(j))
-        plt.imshow(observation[plot_img[j-1],:,:,0])
-
-plt.show()
-
-
-for j in range(1,int(columns*rows/2) ):
-        ax1.append(fig1.add_subplot(rows, columns, j))
-        ax1[-1].set_title("Reconstruction: "+str(j))
-        plt.imshow( agent.CAE.predict( Img2Frame( observation[plot_img[j-1]:plot_img[j-1]+4,:,:,:]))[0,:,:,0] )
-
-plt.show() 
-
-plt.scatter(np.arange(Y[0].size),Y[0],color = 'red')
-plt.scatter(np.arange(Y[0].size),agent.myPolicy[0].predict(X[0]),color='blue')
-plt.scatter(np.arange(Y[0].size),(agent.myPolicy[0].predict(X[0])-Y[0]),color='green')
-plt.show()
-
-np.save(os.getcwd() + '/debug/X'+str(n),X[0])
-np.save(os.getcwd() + '/debug/Y'+str(n),Y[0])
-np.save(os.getcwd() + '/debug/Xw'+str(n),agent.myPolicy[0].predict(X[0]))
+env_name = 'Breakout-v0'
+env = make_atari(env_name)
+env = wrap_deepmind(env)
 """
+frames - number of frames for algorithm to run on
+episodes - stores number of episodes
+batch_size - size of batch to train q network with, as well as how many data points to sample
+memory_size - size of experience replay memory
+memory_start_size - size of initial random memory in experience replay memory
+learning_rate - learning rate for SGD
+update_frequency - how frequently to update target q network
+discount - discount factor 
+evaluation_frequency - how often to evaluate the agents performance
+evaluation_data - list of evaluation data 
+
+"""
+frames = 1000
+episodes = 0
+batch_size = 32
+memory_size = 500000
+memory_start_size = int(memory_size/1000)
+learning_rate = 0.00025
+update_frequency = 10000
+evaluation_frequency = frames/250
+
+memory = ReplayMemory(memory_size)
+agent = Linearagent()
+collectRandomData(memory,memory_start_size,env_name)
+agent.train_autoencoder(memory, memory_start_size)
+
+n = 0
+j = 0
+
+try:
+    while n in range(frames):
+
+        done = False
+        initial_state = env.reset()
+        action = agent.getAction(np.array(initial_state.__array__()[np.newaxis,:,:,:])) 
+        state, reward, done, _ = env.step(action)
+        memory.add(initial_state,action,reward,state,done )
+        n += 1
+            
+        while (not done) and (n<frames):
+
+            action = agent.getAction(np.array(state.__array__()[np.newaxis,:,:,:])) 
+            next_state,reward,done,_ = env.step(action)
+            memory.add(state,action,reward,next_state,done)
+            state = next_state
+            agent.decrease_epsilon(n)
+            n += 1
+
+            if memory.current_size >= batch_size:
+
+                # Get batch
+                state_batch, action_batch, reward_batch, next_state_batch, not_done_batch = memory.get_batch(batch_size)
+                agent.getData(state_batch,next_state_batch,action_batch)
+                
+                # Zero any graidents
+                optimizer.zero_grad()
+                    
+                # Get the q values corresponding to action taken
+                qvalues = agent.Q(state_batch)[range(batch_size), action_batch]
+
+                # Get the target q values 
+                qtargetValues, _ = torch.max(agent.QTarget(next_state_batch), 1)
+
+                # set final frame in episode to have q value equal to reward
+                qtargetValues = not_done_batch * qtargetValues
+
+                # calculate target q value r + y * Qt
+                qtarget = reward_batch + agent.disc_factor * qtargetValues
+
+                # don't calculate gradients of target network
+                qtarget = qtarget.detach()
+
+                # loss is mean squared loss 
+                loss = F.mse_loss(qvalues,qtarget)
+
+                # calculate gradients of q network parameters
+                loss.backward()
+
+                # update paramters a single step
+                optimizer.step()
+
+            if n % update_frequency == 0:
+                #start_time = time.monotonic()    
+                agent.QTarget.load_state_dict(agent.Q.state_dict())
+                #end_time = time.monotonic()
+                #print('Block 4 time: ',timedelta(seconds=end_time - start_time))
+            
+
+            if n % evaluation_frequency == 0:
+                torch.save(agent.Q.state_dict(),'saved_models/Qnetwork' + str(j) + '.pth')
+                print(j)
+                j+=1
+
+    
+            
+    episodes += 1
+    print(episodes)
+
+except:
+    torch.save(agent.Q.state_dict(),'saved_models/QnetworkBACKUP.pth')
+    np.save('log/idx',j)
+    print('Final avergae score: ', collectMeanScore(agent,5,0.005,env_name))
+    print("Total number of frames: ", frames)
+    print("Total number of episodes: ", episodes)
+
+torch.save(agent.Q.state_dict(),'saved_models/QnetworkFINAL.pth')
+np.save('idx',j)
+print('Final avergae score: ', collectMeanScore(agent,5,0.005,env_name))
+print("Total number of frames: ", frames)
+print("Total number of episodes: ", episodes)

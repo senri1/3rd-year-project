@@ -1,2 +1,4 @@
+/DQN/log/*
 /DQN/saved_models/*
-/DQN/stateEval.npy
+/DQN/__pycache__/*
+/saved_models/*

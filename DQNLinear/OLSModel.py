@@ -26,10 +26,13 @@ class OLS:
         x = torch.from_numpy(X).float()
         with torch.no_grad():
             y = self.Linear(x)
-        return float(y)
+        return float(y[0])
+
+    def setWeights(self, newWeight):
+        self.Linear.load_state_dict(newWeight)
 
     def getWeights(self):
-        return self.Linear.parameters()
+        return self.Linear.state_dict()
     
     def getSquaredError(self,X,Y):
         X = torch.from_numpy(X).float()

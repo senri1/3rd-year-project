@@ -53,6 +53,7 @@ try:
         action = agent.getAction(LazyFrame2Torch(initial_state)) 
         state, reward, done, _ = env.step(action)
         memory.add(initial_state,action,reward,state,done )
+        agent.decrease_epsilon(n)
         n += 1
             
         while (not done) and (n<frames):

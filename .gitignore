@@ -2,3 +2,5 @@
 /DQN/saved_models/*
 /DQN/__pycache__/*
 /saved_models/*
+/DQNLinear/saved_models/*
+/DQNLinear/saved_agents/*

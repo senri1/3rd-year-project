@@ -6,8 +6,8 @@ from gym import wrappers
 from atari_wrappers import wrap_deepmind
 from atari_wrappers import make_atari
 from LinearAgent import Linearagent
-from LinearAgent import getStandard
-from ReplayMemory import *
+from ReplayMemory import ReplayMemory
+from EvaluateAgent import collectRandomData
 import time
 from datetime import timedelta
 
@@ -40,9 +40,11 @@ memory = ReplayMemory(memory_size)
 agent = Linearagent()
 collectRandomData(memory,memory_start_size,env_name)
 agent.train_autoencoder(memory, memory_start_size)
+#agent.load_agent()
+#memory.load_replay()
 
 n = 0
-j = 0
+j = agent.training_steps
 
 try:
     while n in range(frames):
@@ -52,6 +54,7 @@ try:
         action = agent.getAction(np.array(initial_state.__array__()[np.newaxis,:,:,:])) 
         state, reward, done, _ = env.step(action)
         memory.add(initial_state,action,reward,state,done )
+        agent.decrease_epsilon()
         n += 1
             
         while (not done) and (n<frames):
@@ -60,68 +63,84 @@ try:
             next_state,reward,done,_ = env.step(action)
             memory.add(state,action,reward,next_state,done)
             state = next_state
-            agent.decrease_epsilon(n)
+            agent.decrease_epsilon()
             n += 1
 
             if memory.current_size >= batch_size:
 
-                # Get batch
+                # get batch of size 32 from replay memory
                 state_batch, action_batch, reward_batch, next_state_batch, not_done_batch = memory.get_batch(batch_size)
-                agent.getData(state_batch,next_state_batch,action_batch)
-                
-                # Zero any graidents
-                optimizer.zero_grad()
-                    
-                # Get the q values corresponding to action taken
-                qvalues = agent.Q(state_batch)[range(batch_size), action_batch]
-
-                # Get the target q values 
-                qtargetValues, _ = torch.max(agent.QTarget(next_state_batch), 1)
-
-                # set final frame in episode to have q value equal to reward
-                qtargetValues = not_done_batch * qtargetValues
-
-                # calculate target q value r + y * Qt
-                qtarget = reward_batch + agent.disc_factor * qtargetValues
-
-                # don't calculate gradients of target network
-                qtarget = qtarget.detach()
-
-                # loss is mean squared loss 
-                loss = F.mse_loss(qvalues,qtarget)
-
-                # calculate gradients of q network parameters
-                loss.backward()
-
-                # update paramters a single step
-                optimizer.step()
+                # get qtargets
+                qtarget = agent.getQtargets(next_state_batch, reward_batch, not_done_batch)
+                # get data that matches qtarget and states to corresponding action 
+                state_batch, qtarget = agent.getTrainingData(state_batch,qtarget,action_batch)
+                # train agent for 1 step
+                agent.train(state_batch, qtarget, 1)
 
             if n % update_frequency == 0:
                 #start_time = time.monotonic()    
-                agent.QTarget.load_state_dict(agent.Q.state_dict())
+                agent.updateQTarget()
                 #end_time = time.monotonic()
                 #print('Block 4 time: ',timedelta(seconds=end_time - start_time))
             
 
             if n % evaluation_frequency == 0:
-                torch.save(agent.Q.state_dict(),'saved_models/Qnetwork' + str(j) + '.pth')
+                agent.save_agent(j)
                 print(j)
                 j+=1
 
-    
-            
     episodes += 1
     print(episodes)
 
 except:
-    torch.save(agent.Q.state_dict(),'saved_models/QnetworkBACKUP.pth')
-    np.save('log/idx',j)
-    print('Final avergae score: ', collectMeanScore(agent,5,0.005,env_name))
+    agent.save_agent('BACKUP')
+    #memory.save_replay()
+    np.save('idx',j)
     print("Total number of frames: ", frames)
     print("Total number of episodes: ", episodes)
 
-torch.save(agent.Q.state_dict(),'saved_models/QnetworkFINAL.pth')
+agent.save_agent('FINAL')
+#memory.save_replay()
 np.save('idx',j)
-print('Final avergae score: ', collectMeanScore(agent,5,0.005,env_name))
 print("Total number of frames: ", frames)
 print("Total number of episodes: ", episodes)
+
+
+
+"""
+done = False
+initial_state = env.reset()
+action = agent.getAction(np.array(initial_state.__array__()[np.newaxis,:,:,:])) 
+state, reward, done, _ = env.step(action)
+memory.add(initial_state,action,reward,state,done )
+agent.decrease_epsilon()
+n += 1
+
+action = agent.getAction(np.array(state.__array__()[np.newaxis,:,:,:])) 
+next_state,reward,done,_ = env.step(action)
+memory.add(state,action,reward,next_state,done)
+state = next_state
+agent.decrease_epsilon()
+n += 1
+
+# get batch of size 32 from replay memory
+state_batch, action_batch, reward_batch, next_state_batch, not_done_batch = memory.get_batch(batch_size)
+# get qtargets
+qtarget = agent.getQtargets(next_state_batch, reward_batch, not_done_batch)
+# get data that matches qtarget and states to corresponding action 
+state_batch, qtarget = agent.getTrainingData(state_batch,qtarget,action_batch)
+# train agent for 1 step
+agent.train(state_batch, qtarget, 1)
+
+if n % update_frequency == 0:
+#start_time = time.monotonic()    
+agent.updateQTarget()
+#end_time = time.monotonic()
+#print('Block 4 time: ',timedelta(seconds=end_time - start_time))
+
+
+if n % evaluation_frequency == 0:
+agent.save_agent(j)
+print(j)
+j+=1
+"""

@@ -2,6 +2,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
+import os
+import pickle
 
 class Qnetwork(torch.nn.Module):
     def __init__(self,num_actions):
@@ -38,7 +40,13 @@ class DQNagent():
         self.QTarget.load_state_dict(self.Q.state_dict())
         self.disc_factor = disc_factor
         self.epsilon = epsilon
+        self.learning_rate = 0.00025
         self.num_actions = num_actions
+        self.training_steps = 0
+        self.min_epsilon = 0.1
+        self.init_epsilon = 1.0
+        #optimizer = torch.optim.adam(agent.Qnetwork.parameters(), lr = learning_rate)
+        self.optimizer = torch.optim.RMSprop(self.Q.parameters(), lr=self.learning_rate, eps=0.01, alpha=0.95)
 
     
     def getQvalues(self,state):
@@ -46,28 +54,75 @@ class DQNagent():
             return self.Q(state)
 
     def getAction(self,state):
+        
+        Qvalues = self.getQvalues(state)
+        probability = np.random.random_sample()
 
-        if self.Q == None:
-            return np.random.randint(0,high=4)
-
+        if self.epsilon <= probability:
+            maxq, action = Qvalues.max(1)
         else:
+            action = np.random.randint(0,high=4)
+        return action
 
-            Qvalues = self.getQvalues(state)
-            probability = np.random.random_sample()
+    def getQtargets(self, next_state_batch, reward_batch, not_done_batch):
+        # Get the target q values 
+        qtargetValues, _ = torch.max(self.QTarget(next_state_batch), 1)
 
-            if self.epsilon <= probability:
-                maxq, action = Qvalues.max(1)
-            else:
-                action = np.random.randint(0,high=4)
-            return action
+        # set final frame in episode to have q value equal to reward
+        qtargetValues = not_done_batch * qtargetValues
 
-    def decrease_epsilon(self,steps):
-        min_epsilon = 0.1
-        init_epsilon = 1.0
+        # calculate target q value r + y * Qt
+        qtarget = reward_batch + self.disc_factor * qtargetValues
+
+        # don't calculate gradients of target network
+        qtarget = qtarget.detach()
+        return qtarget
+
+    def train(self, state_batch, action_batch, batch_size, qtargets):
+        # Zero any graidents
+        self.optimizer.zero_grad()
+        # Get the q values corresponding to action taken
+        qvalues = self.Q(state_batch)[range(batch_size), action_batch]
+        # loss is mean squared loss 
+        loss = F.mse_loss(qvalues,qtargets)
+        # calculate gradients of q network parameters
+        loss.backward()
+        # update paramters a single step
+        self.optimizer.step()
+
+    def update_target(self):
+        self.QTarget.load_state_dict(self.Q.state_dict())
+
+    def decrease_epsilon(self):
+        self.training_steps += 1
         eps_decay_steps = 1000000.0
-        self.epsilon = max(min_epsilon, init_epsilon - (init_epsilon-min_epsilon) * float(steps)/eps_decay_steps)
+        self.epsilon = max(self.min_epsilon, self.init_epsilon - (self.init_epsilon-self.min_epsilon) * float(self.training_steps)/eps_decay_steps)
 
+    def save_agent(self,j):
+        agent_name = 'agent' + str(j)
+        dir = 'saved_agents/' + agent_name + '/'
+        
+        try:
+            os.mkdir(dir)
+        except FileExistsError:
+            print("Directory " , dir ,  " already exists")
 
+        torch.save(self.Q.state_dict(),dir + 'Qnet' + '.pth')
+        torch.save(self.QTarget.state_dict(),dir + 'QTargetnet' + '.pth')
+        with open(os.getcwd() + '/' + dir + 'metadata.pckl' , "wb") as f:
+            pickle.dump([self.epsilon, self.training_steps], f)
+        
+    def load_agent(self,j):
+        agent_name = 'agent' + str(j)
+        dir = 'saved_agents/' + agent_name + '/'
+        state_dict = torch.load(dir + 'Qnet' + '.pth')
+        self.Q.load_state_dict(state_dict)
+        state_dict = torch.load(dir + 'QTargetnet' + '.pth')
+        self.QTarget.load_state_dict(state_dict)
+        with open(os.getcwd() +'/' + dir +'metadata.pckl', "rb") as f:
+            metadata = pickle.load(f)
+        self.epsilon = metadata[0]
+        self.training_steps = metadata[1]
 
 """
 done = False

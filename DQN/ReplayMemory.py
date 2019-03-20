@@ -8,7 +8,8 @@ from gym import wrappers
 from atari_wrappers import wrap_deepmind
 from atari_wrappers import make_atari
 from DQNAgent import DQNagent
-
+import os 
+import pickle
 
 class ReplayMemory():
     def __init__(self, size, batch_size):
@@ -42,63 +43,24 @@ class ReplayMemory():
         not_done = torch.from_numpy(batch[:,4].astype(float)).float().to('cuda')
         
         return state, action, reward, next_state, not_done
-
-def collectRandomData(replayMemory,steps,env_name):
-    env = make_atari(env_name)
-    env = wrap_deepmind(env)
-    i=0
-    while i in range(steps):
         
-        done = False
-        initial_state = env.reset()
-        action = np.random.randint(0,high=4) 
-        state, reward, done, _ = env.step(action)
-        replayMemory.add(initial_state,action,reward,state,done )
-        i += 1
-    
-        while (not done) and (i < steps) :
+    def save_replay(self,j):
+        agent_name = 'agent' + str(j)
+        dir = 'saved_agents/' + agent_name + '/'
+        try:
+            os.mkdir(dir)
+        except FileExistsError:
+            print("Directory " , dir ,  " already exists")
         
-            action = np.random.randint(0,high=4)
-            next_state,reward,done,_ = env.step(action)
-            replayMemory.add(state,action,reward,next_state,done)
-            state = next_state
-            i += 1
-    env.close()
-
-def collectMeanScore(agent,steps,epsilon,env_name):
-    env = make_atari(env_name)
-    env = wrap_deepmind(env)
-    evalAgent = DQNagent()
-    evalAgent.Q.load_state_dict(agent.Q.state_dict())
-    evalAgent.epsilon = epsilon
-    rewards_sum = 0.0
-    episodes = 0
-
-    state = env.reset()
-    while episodes in range(steps):
+        with open(os.getcwd() + '/' + dir + 'replay_memory.pckl' , "wb") as f:
+            pickle.dump([self.max_size, self.current_size, self.data], f)
         
-        action = evalAgent.getAction(LazyFrame2Torch(state))
-        state, reward, done, _ = env.step(action)
-        rewards_sum += reward
-        if done:
-            env.reset()
-            episodes += 1
+    def load_replay(self,j):
+        agent_name = 'agent' + str(j)
+        dir = 'saved_agents/' + agent_name + '/'
+        with open(os.getcwd() +'/' + dir +'replay_memory.pckl', "rb") as f:
+            replay_memory = pickle.load(f)
+        self.max_size = replay_memory[0]
+        self.current_size = replay_memory[1]
+        self.data = replay_memory[2]
 
-    average_score = rewards_sum/episodes
-    env.close()
-    return float(average_score)
-
-def evaluateStateQvalues(agent):
-    s = np.load('log/stateEval.npy') 
-    s = torch.from_numpy(s).float().to('cuda')
-    with torch.no_grad():
-        q = agent.Q(s)
-        q = torch.mean(q,1)
-        q = torch.mean(q)
-    return float(q)
-
-def LazyFrame2Torch(x):
-        y = x.__array__()[np.newaxis,:,:,:]
-        y = np.moveaxis(y,3,1)
-        y = torch.from_numpy(y).float().to('cuda')
-        return y

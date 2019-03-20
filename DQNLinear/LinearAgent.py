@@ -1,5 +1,6 @@
 import tensorflow as tf
 from tensorflow.keras import layers
+import torch
 import numpy as np
 from sklearn.model_selection import train_test_split
 from OLSModel import OLS
@@ -126,7 +127,7 @@ class Linearagent():
     def train(self, state_batch, qtargets,steps):
         for i in range(self.num_actions):
             if state_batch[i].size != 0:
-                self.Linear[i].fit(state_batch[i], qtargets[i],steps)
+                self.Linear[i].fit(np.array(state_batch[i], dtype='float32'), np.array(qtargets[i], dtype='float32'),steps)
 
     def getQvalues(self,state):
         Q = np.zeros(self.num_actions)
@@ -157,7 +158,7 @@ class Linearagent():
         state = []
         qtargets = []
         for i in range(self.num_actions):
-            mask = np.nonzero(~(action_batch==i))
+            mask = np.nonzero((action_batch!=i))
             s = np.delete(state_batch, mask[0], 0)
             q = np.delete(qtarget, mask[0], 0)
             state.append(s)
@@ -170,11 +171,12 @@ class Linearagent():
         next_state_batch = np.divide(next_state_batch, self.sd, out=np.zeros_like(next_state_batch), where=self.sd!=0)
         idx = np.nonzero(not_done_batch==0)
         next_state_batch[idx[0],:] = 0
+        #next_state_batch = next_state_batch*not_done_batch[:,np.newaxis]
         qtarget = np.zeros((next_state_batch.shape[0],self.num_actions))
         for i in range(self.num_actions):
             qtarget[:,i] = self.LinearTarget[i].predict(next_state_batch)
         qtarget = np.max(qtarget,axis=1,keepdims=True)
-        qtarget = reward_batch + self.disc_factor * qtarget
+        qtarget = reward_batch[:,np.newaxis] + self.disc_factor * qtarget
         return qtarget
 
     def updateQTarget(self):
@@ -213,7 +215,7 @@ class Linearagent():
         np.save(os.getcwd() + '/' + dir + 'mean' ,self.mean)
         np.save(os.getcwd() + '/' + dir + 'sd',self.sd)
     
-    def load_encoder(self,j):
+    def load_encoder(self,dir):
         """ This method loads a convolutional autoencoder trained on the environment specified in self.env, as well as
             the mean and standard deviation of the states obtained from the training data used to train the CAE. """
 

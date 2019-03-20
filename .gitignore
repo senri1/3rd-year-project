@@ -1,6 +1,8 @@
 /DQN/log/*
 /DQN/saved_models/*
+/DQN/saved_agents/*
 /DQN/__pycache__/*
 /saved_models/*
 /DQNLinear/saved_models/*
 /DQNLinear/saved_agents/*
+/DQNLinear/log/*

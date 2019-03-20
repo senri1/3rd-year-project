@@ -61,7 +61,7 @@ def evaluate():
 
     TestAgent = Linearagent()
     evaluation_data=[]
-    idx = int(np.load('idx.npy'))
+    idx = int(np.load('log/idx.npy'))
     env_name = 'Breakout-v0'
 
     for i in range(idx):

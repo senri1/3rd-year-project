@@ -94,14 +94,14 @@ try:
 
 except:
     agent.save_agent('BACKUP')
-    #memory.save_replay()
-    np.save('idx',j)
+    memory.save_replay('BACKUP')
+    np.save('log/idx',j)
     print("Total number of frames: ", frames)
     print("Total number of episodes: ", episodes)
 
 agent.save_agent('FINAL')
-#memory.save_replay()
-np.save('idx',j)
+memory.save_replay('FINAL')
+np.save('log/idx',j)
 print("Total number of frames: ", frames)
 print("Total number of episodes: ", episodes)
 

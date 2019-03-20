@@ -47,11 +47,12 @@ class DQNagent():
         self.init_epsilon = 1.0
         #optimizer = torch.optim.adam(agent.Qnetwork.parameters(), lr = learning_rate)
         self.optimizer = torch.optim.RMSprop(self.Q.parameters(), lr=self.learning_rate, eps=0.01, alpha=0.95)
-
+        self.eps_decay_steps = 1000000.0
     
     def getQvalues(self,state):
         with torch.no_grad():
-            return self.Q(state)
+            q = self.Q(state)
+        return q
 
     def getAction(self,state):
         
@@ -59,23 +60,22 @@ class DQNagent():
         probability = np.random.random_sample()
 
         if self.epsilon <= probability:
-            maxq, action = Qvalues.max(1)
+            _, action = Qvalues.max(1)
         else:
             action = np.random.randint(0,high=4)
         return action
 
     def getQtargets(self, next_state_batch, reward_batch, not_done_batch):
-        # Get the target q values 
-        qtargetValues, _ = torch.max(self.QTarget(next_state_batch), 1)
+        with torch.no_grad():
+            # Get the target q values 
+            qtarget, _ = torch.max(self.QTarget(next_state_batch), 1)
 
-        # set final frame in episode to have q value equal to reward
-        qtargetValues = not_done_batch * qtargetValues
+            # set final frame in episode to have q value equal to reward
+            qtarget = not_done_batch * qtarget
 
-        # calculate target q value r + y * Qt
-        qtarget = reward_batch + self.disc_factor * qtargetValues
+            # calculate target q value r + y * Qt
+            qtarget = reward_batch + self.disc_factor * qtarget
 
-        # don't calculate gradients of target network
-        qtarget = qtarget.detach()
         return qtarget
 
     def train(self, state_batch, action_batch, batch_size, qtargets):
@@ -95,8 +95,7 @@ class DQNagent():
 
     def decrease_epsilon(self):
         self.training_steps += 1
-        eps_decay_steps = 1000000.0
-        self.epsilon = max(self.min_epsilon, self.init_epsilon - (self.init_epsilon-self.min_epsilon) * float(self.training_steps)/eps_decay_steps)
+        self.epsilon = max(self.min_epsilon, self.init_epsilon - (self.init_epsilon-self.min_epsilon) * float(self.training_steps)/self.eps_decay_steps)
 
     def save_agent(self,j):
         agent_name = 'agent' + str(j)

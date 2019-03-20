@@ -10,37 +10,32 @@ from ReplayMemory import ReplayMemory
 from EvaluateAgent import LazyFrame2Torch, collectRandomData, collectMeanScore
 import time
 from datetime import timedelta
+import os
 
 env_name = 'Breakout-v0'
 env = make_atari(env_name)
 env = wrap_deepmind(env)
-"""
-frames - number of frames for algorithm to run on
-episodes - stores number of episodes
-batch_size - size of batch to train q network with, as well as how many data points to sample
-memory_size - size of experience replay memory
-memory_start_size - size of initial random memory in experience replay memory
-learning_rate - learning rate for SGD
-update_frequency - how frequently to update target q network
-discount - discount factor 
-evaluation_frequency - how often to evaluate the agents performance
-evaluation_data - list of evaluation data 
 
-"""
-frames = 1000
+
+frames = 1000000
 episodes = 0
 batch_size = 32
-memory_size = 500000
-memory_start_size = int(memory_size/1000)
+memory_size = 260000
+memory_start_size = int(memory_size/20)
 update_frequency = 10000
 evaluation_frequency = frames/250
 
 memory = ReplayMemory(memory_size, batch_size)
 agent = DQNagent()
 collectRandomData(memory,memory_start_size,env_name)
-print(memory.current_size)
+
 #agent.load_agent('FINAL')
 #memory.load_replay('FINAL')
+print('Training for ' + str(frames) + ' frames.')
+print('Batch size = ' , batch_size)
+print('Initial memory size = ' , memory.current_size)
+print('Update Q target frequency = ', update_frequency)
+print('Evaluation frequency = ' , evaluation_frequency)
 
 n = 0
 j = agent.training_steps
@@ -81,16 +76,21 @@ try:
 
             if n % evaluation_frequency == 0:
                 agent.save_agent(j)
-                print(j)
+                memory.save_replay('BACKUPSBACKUP')
                 j+=1
+                print('Frames = ', n)
+                print('Number of episodes = ', episodes)
+                print('Number of saved agents = ',j)
+                
 
     
             
-    episodes += 1
-    print(episodes)
+        episodes += 1
+        
 
 except:
     agent.save_agent('BACKUP')
+    os.remove(os.getcwd() + '/saved_agents/agentBACKUPSBACKUP/replay_memory.pckl')
     memory.save_replay('BACKUP')
     np.save('log/idx',j)
     print('Final avergae score: ', collectMeanScore(agent,5,0.005,env_name))
@@ -98,6 +98,7 @@ except:
     print("Total number of episodes: ", episodes)
 
 agent.save_agent('FINAL')
+os.remove(os.getcwd() + '/saved_agents/agentBACKUPSBACKUP/replay_memory.pckl')
 memory.save_replay('FINAL')
 np.save('log/idx',j)
 print('Final avergae score: ', collectMeanScore(agent,5,0.005,env_name))

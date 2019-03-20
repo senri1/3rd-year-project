@@ -10,6 +10,7 @@ from ReplayMemory import ReplayMemory
 from EvaluateAgent import collectRandomData
 import time
 from datetime import timedelta
+import os
 
 env_name = 'Breakout-v0'
 env = make_atari(env_name)
@@ -27,11 +28,11 @@ evaluation_frequency - how often to evaluate the agents performance
 evaluation_data - list of evaluation data 
 
 """
-frames = 1000
+frames = 100000
 episodes = 0
 batch_size = 32
-memory_size = 500000
-memory_start_size = int(memory_size/1000)
+memory_size = 260000
+memory_start_size = int(memory_size/20)
 learning_rate = 0.00025
 update_frequency = 10000
 evaluation_frequency = frames/250
@@ -86,20 +87,24 @@ try:
 
             if n % evaluation_frequency == 0:
                 agent.save_agent(j)
-                print(j)
+                memory.save_replay('BACKUPSBACKUP')
                 j+=1
+                print('Frames = ', n)
+                print('Number of episodes = ', episodes)
+                print('Number of saved agents = ',j)
 
     episodes += 1
-    print(episodes)
 
 except:
     agent.save_agent('BACKUP')
+    os.remove(os.getcwd() + '/saved_agents/agentBACKUPSBACKUP/replay_memory.pckl')
     memory.save_replay('BACKUP')
     np.save('log/idx',j)
     print("Total number of frames: ", frames)
     print("Total number of episodes: ", episodes)
 
 agent.save_agent('FINAL')
+os.remove(os.getcwd() + '/saved_agents/agentBACKUPSBACKUP/replay_memory.pckl')
 memory.save_replay('FINAL')
 np.save('log/idx',j)
 print("Total number of frames: ", frames)

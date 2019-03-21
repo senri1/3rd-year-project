@@ -50,9 +50,10 @@ class ReplayMemory():
         print(str(self.current_size/500))
         for i in range(int(self.current_size/500)):
             print('From ' + str(i*500) + 'to' + str((i+1)*500) )
-            print(np.array(self.data)[i*500:(i+1)*500,:].shape)
+            a = np.array(list(self.data)[i*500:(i+1)*500])
+            print(a.shape)
             with open(os.getcwd() +'/'+ dir + "mem" + str(i), 'wb') as pfile:
-                pickle.dump(np.array(list(self.data)[i*500:(i+1)*500]), pfile, protocol=pickle.HIGHEST_PROTOCOL)
+                pickle.dump(a, pfile, protocol=pickle.HIGHEST_PROTOCOL)
             time.sleep(0.1)
         
     def load_replay(self,j):

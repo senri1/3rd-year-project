@@ -8,7 +8,7 @@ class OLS:
         self.dtype = torch.float
         self.device = torch.device("cpu")
         self.Linear = torch.nn.Linear(400,1)
-        self.learning_rate = 0.00025
+        self.learning_rate = 1e-7
         self.optimizer = torch.optim.SGD(self.Linear.parameters(), lr = self.learning_rate, weight_decay=l2)
     
     def fit(self,X,Y,steps):

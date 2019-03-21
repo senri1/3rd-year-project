@@ -1,4 +1,4 @@
-from LinearAgent import Linearagent
+#from LinearAgent import Linearagent
 from atari_wrappers import wrap_deepmind
 from atari_wrappers import make_atari
 import numpy as np

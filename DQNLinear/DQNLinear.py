@@ -36,11 +36,12 @@ memory_start_size = int(memory_size/20)
 learning_rate = 0.00025
 update_frequency = 10000
 evaluation_frequency = frames/250
+train_size = 40000
 
 memory = ReplayMemory(memory_size)
 agent = Linearagent()
 collectRandomData(memory,memory_start_size,env_name)
-agent.train_autoencoder(memory, memory_start_size)
+agent.train_autoencoder(train_size, env_name)
 #agent.load_agent('FINAL')
 #memory.load_replay('FINAL')
 print('Training for ' + str(frames) + ' frames.')
@@ -63,7 +64,7 @@ try:
         agent.decrease_epsilon()
         n += 1
             
-        while (not done) and (n<frames):
+        while (not done):
 
             action = agent.getAction(np.array(state.__array__()[np.newaxis,:,:,:])) 
             next_state,reward,done,_ = env.step(action)
@@ -93,20 +94,22 @@ try:
             if n % evaluation_frequency == 0:
                 agent.save_agent(j)
                 j+=1
+                print('Current epsilon: ',agent.epsilon)
+                for i in range(4):
+                    print('Linear weights ' + str(i) + ' sum: ', np.sum(agent.Linear[i].getWeights()['weight'].detach().numpy()))
                 print('Frames = ', agent.training_steps)
                 print('Number of episodes = ', episodes)
                 print('Number of saved agents = ',j)
 
-    episodes += 1
+        episodes += 1
 
 except:
     print('Welp')
 
 agent.save_agent('FINAL')
-memory.save_replay('FINAL')
 np.save('log/idx',j)
-print("Total number of frames: ", frames)
+print("Total number of frames: ", n)
 print("Total number of episodes: ", episodes)
-
+memory.save_replay('FINAL')
 
 

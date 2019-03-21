@@ -77,6 +77,7 @@ try:
             if n % evaluation_frequency == 0:
                 agent.save_agent(j)
                 j+=1
+                print('Current epsilon: ',agent.epsilon)
                 print('Frames = ', agent.training_steps)
                 print('Number of episodes = ', episodes)
                 print('Number of saved agents = ',j)

@@ -4,6 +4,10 @@ import torch
 import numpy as np
 from sklearn.model_selection import train_test_split
 from OLSModel import OLS
+from ReplayMemory import ReplayMemory
+#from EvaluateAgent import collectRandomData
+from EvaluateAgent import collectRandomData
+
 import pickle
 import os
 
@@ -70,7 +74,7 @@ def getStandard(state):
     sd = np.std(state_temp,axis=0)
     return mean, sd, state_temp
 
-def createLinearLayers(layerType ,num_actions):
+def createLinearLayers(layerType ,num_actions, weight):
 
     linearLayers = []
 
@@ -81,7 +85,7 @@ def createLinearLayers(layerType ,num_actions):
 
     if layerType == 'l2':
         for i in range(num_actions):
-            linearLayers.append(OLS(1.0))
+            linearLayers.append(OLS(weight))
 
     return linearLayers        
 
@@ -93,7 +97,8 @@ class Linearagent():
         epsilon=1,
         disc_factor = 0.99,
         num_actions=4,
-        linearType='lr'
+        linearType='l2',
+        weight = 0.001
         ):
         self.CAE, self.encoder, self.decoder = create_CAE()
         self.mean = None
@@ -104,12 +109,16 @@ class Linearagent():
         self.init_epsilon = 1
         self.training_steps = 0
         self.num_actions = num_actions
-        self.Linear = createLinearLayers(linearType,num_actions)
-        self.LinearTarget = createLinearLayers(linearType,num_actions)
+        self.weight = weight
+        self.Linear = createLinearLayers(linearType,num_actions, weight)
+        self.LinearTarget = createLinearLayers(linearType,num_actions, weight)
+        self.updateQTarget()
 
-    def train_autoencoder(self, memory, data_size):
+    def train_autoencoder(self, data_size, env_name):
 
-        X,_,_,_,_ = memory.get_batch(data_size)
+        training_data = ReplayMemory(data_size)
+        collectRandomData(training_data, data_size, env_name)
+        X,_,_,_,_ = training_data.get_batch(data_size)
         X_train, X_test = train_test_split(X,test_size=0.1)
 
         History = self.CAE.fit(X_train,
@@ -123,6 +132,7 @@ class Linearagent():
         # Get the standard deviation and mean of the states produced by the encoder from the training data.    
         state = self.encoder.predict(X_train)
         self.mean, self.sd,_ = getStandard(state)
+        del training_data
 
     def train(self, state_batch, qtargets,steps):
         for i in range(self.num_actions):

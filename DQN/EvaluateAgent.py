@@ -14,11 +14,11 @@ def evaluate():
     idx = int(np.load('log/idx.npy'))
     env_name = 'Breakout-v0'
 
-    for i in range(idx):
+    for i in range(242):
 
         print(i)
         TestAgent.load_agent(i)
-        evaluation_data.append([ collectMeanScore(TestAgent,7,0.05,env_name), evaluateStateQvalues(TestAgent) ])
+        evaluation_data.append([ collectMeanScore(TestAgent,25,0.05,env_name), evaluateStateQvalues(TestAgent) ])
 
     np.savetxt("log/eval_data.csv", evaluation_data, delimiter=",")
 
@@ -33,6 +33,7 @@ def collectRandomData(replayMemory,steps,env_name):
         action = np.random.randint(0,high=4) 
         state, reward, done, _ = env.step(action)
         replayMemory.add(initial_state,action,reward,state,done )
+        print(i)
         i += 1
     
         while (not done) and (i < steps) :

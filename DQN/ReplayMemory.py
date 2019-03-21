@@ -2,14 +2,9 @@ from collections import deque
 import random
 import numpy as np
 import torch 
-import torch.nn.functional as F
-import gym
-from gym import wrappers
-from atari_wrappers import wrap_deepmind
-from atari_wrappers import make_atari
-from DQNAgent import DQNagent
 import os 
 import pickle
+import time
 
 class ReplayMemory():
     def __init__(self, size, batch_size):
@@ -51,16 +46,28 @@ class ReplayMemory():
             os.mkdir(dir)
         except FileExistsError:
             print("Directory " , dir ,  " already exists")
-        
-        with open(os.getcwd() + '/' + dir + 'replay_memory.pckl' , "wb") as f:
-            pickle.dump([self.max_size, self.current_size, self.data], f)
-        
+        np.save(dir + 'max_size',self.max_size)
+        np.save(dir + 'current_size',self.current_size)
+        print(str(self.current_size/500))
+        for i in range(int(self.current_size/500)):
+            print('From ' + str(i*500) + 'to' + str((i+1)*500) )
+            print(np.array(self.data)[i*500:(i+1)*500,:].shape)
+            with open(os.getcwd() +'/'+ dir + "mem" + str(i), 'wb') as pfile:
+                pickle.dump(np.array(list(self.data)[i*500:(i+1)*500]), pfile, protocol=pickle.HIGHEST_PROTOCOL)
+            time.sleep(0.1)
+
+
     def load_replay(self,j):
         agent_name = 'agent' + str(j)
         dir = 'saved_agents/' + agent_name + '/'
-        with open(os.getcwd() +'/' + dir +'replay_memory.pckl', "rb") as f:
-            replay_memory = pickle.load(f)
-        self.max_size = replay_memory[0]
-        self.current_size = replay_memory[1]
-        self.data = replay_memory[2]
+        self.max_size = int(np.load(dir + 'max_size.npy'))
+        self.current_size = np.load(dir + 'current_size.npy')
+        self.data = deque(maxlen=self.max_size)
+        for i in range(int(self.current_size/500)):
+            print(i)
+            with open(os.getcwd() + '/' + dir + "mem" + str(i), "rb") as f:
+                a = pickle.load(f)
+            for j in range(a.shape[0]):
+                self.data.append(a[j,:])
+            time.sleep(0.1)
 

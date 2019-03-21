@@ -17,10 +17,10 @@ env = make_atari(env_name)
 env = wrap_deepmind(env)
 
 
-frames = 1000000
+frames = 2000000
 episodes = 0
 batch_size = 32
-memory_size = 260000
+memory_size = 250000
 memory_start_size = int(memory_size/20)
 update_frequency = 10000
 evaluation_frequency = frames/250
@@ -76,9 +76,8 @@ try:
 
             if n % evaluation_frequency == 0:
                 agent.save_agent(j)
-                memory.save_replay('BACKUPSBACKUP')
                 j+=1
-                print('Frames = ', n)
+                print('Frames = ', agent.training_steps)
                 print('Number of episodes = ', episodes)
                 print('Number of saved agents = ',j)
                 
@@ -89,16 +88,9 @@ try:
         
 
 except:
-    agent.save_agent('BACKUP')
-    os.remove(os.getcwd() + '/saved_agents/agentBACKUPSBACKUP/replay_memory.pckl')
-    memory.save_replay('BACKUP')
-    np.save('log/idx',j)
-    print('Final avergae score: ', collectMeanScore(agent,5,0.005,env_name))
-    print("Total number of frames: ", frames)
-    print("Total number of episodes: ", episodes)
+    print('Welp')
 
 agent.save_agent('FINAL')
-os.remove(os.getcwd() + '/saved_agents/agentBACKUPSBACKUP/replay_memory.pckl')
 memory.save_replay('FINAL')
 np.save('log/idx',j)
 print('Final avergae score: ', collectMeanScore(agent,5,0.005,env_name))

@@ -28,10 +28,10 @@ evaluation_frequency - how often to evaluate the agents performance
 evaluation_data - list of evaluation data 
 
 """
-frames = 100000
+frames = 2000000
 episodes = 0
 batch_size = 32
-memory_size = 260000
+memory_size = 250000
 memory_start_size = int(memory_size/20)
 learning_rate = 0.00025
 update_frequency = 10000
@@ -41,8 +41,13 @@ memory = ReplayMemory(memory_size)
 agent = Linearagent()
 collectRandomData(memory,memory_start_size,env_name)
 agent.train_autoencoder(memory, memory_start_size)
-#agent.load_agent()
-#memory.load_replay()
+#agent.load_agent('FINAL')
+#memory.load_replay('FINAL')
+print('Training for ' + str(frames) + ' frames.')
+print('Batch size = ' , batch_size)
+print('Initial memory size = ' , memory.current_size)
+print('Update Q target frequency = ', update_frequency)
+print('Evaluation frequency = ' , evaluation_frequency)
 
 n = 0
 j = agent.training_steps
@@ -87,24 +92,17 @@ try:
 
             if n % evaluation_frequency == 0:
                 agent.save_agent(j)
-                memory.save_replay('BACKUPSBACKUP')
                 j+=1
-                print('Frames = ', n)
+                print('Frames = ', agent.training_steps)
                 print('Number of episodes = ', episodes)
                 print('Number of saved agents = ',j)
 
     episodes += 1
 
 except:
-    agent.save_agent('BACKUP')
-    os.remove(os.getcwd() + '/saved_agents/agentBACKUPSBACKUP/replay_memory.pckl')
-    memory.save_replay('BACKUP')
-    np.save('log/idx',j)
-    print("Total number of frames: ", frames)
-    print("Total number of episodes: ", episodes)
+    print('Welp')
 
 agent.save_agent('FINAL')
-os.remove(os.getcwd() + '/saved_agents/agentBACKUPSBACKUP/replay_memory.pckl')
 memory.save_replay('FINAL')
 np.save('log/idx',j)
 print("Total number of frames: ", frames)
@@ -112,40 +110,3 @@ print("Total number of episodes: ", episodes)
 
 
 
-"""
-done = False
-initial_state = env.reset()
-action = agent.getAction(np.array(initial_state.__array__()[np.newaxis,:,:,:])) 
-state, reward, done, _ = env.step(action)
-memory.add(initial_state,action,reward,state,done )
-agent.decrease_epsilon()
-n += 1
-
-action = agent.getAction(np.array(state.__array__()[np.newaxis,:,:,:])) 
-next_state,reward,done,_ = env.step(action)
-memory.add(state,action,reward,next_state,done)
-state = next_state
-agent.decrease_epsilon()
-n += 1
-
-# get batch of size 32 from replay memory
-state_batch, action_batch, reward_batch, next_state_batch, not_done_batch = memory.get_batch(batch_size)
-# get qtargets
-qtarget = agent.getQtargets(next_state_batch, reward_batch, not_done_batch)
-# get data that matches qtarget and states to corresponding action 
-state_batch, qtarget = agent.getTrainingData(state_batch,qtarget,action_batch)
-# train agent for 1 step
-agent.train(state_batch, qtarget, 1)
-
-if n % update_frequency == 0:
-#start_time = time.monotonic()    
-agent.updateQTarget()
-#end_time = time.monotonic()
-#print('Block 4 time: ',timedelta(seconds=end_time - start_time))
-
-
-if n % evaluation_frequency == 0:
-agent.save_agent(j)
-print(j)
-j+=1
-"""

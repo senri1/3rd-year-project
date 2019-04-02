@@ -21,7 +21,7 @@ env = make_atari(env_name)
 env = wrap_deepmind(env)
 
 
-frames = 1000000
+frames = 2000000
 episodes = 0
 batch_size = 32
 memory_size = 250000
@@ -32,11 +32,11 @@ train_size = 32*1000
 
 memory = ReplayMemory(memory_size, batch_size)
 agent = Linearagent()
-#collectRandomData(memory,memory_start_size,env_name)
+collectRandomData(memory,memory_start_size,env_name)
 #agent.train_autoencoder(train_size, 5, batch_size, None, env_name)
-#agent.load_encoder('saved_agents/agent46/')
-agent.load_agent('FINAL1845685')
-memory.load_replay('FINAL1845685')
+agent.load_encoder('saved_agents/agentone/')
+#agent.load_agent('backup700000')
+#memory.load_replay('backup700000')
 agent.decoder = None
 print('Training for ' + str(frames) + ' frames.')
 print('Batch size = ' , batch_size)
@@ -45,8 +45,8 @@ print('Update Q target frequency = ', update_frequency)
 print('Evaluation frequency = ' , evaluation_frequency)
 
 n = 0
-j = 415
-#print(mem_top()) #5362
+j = 0
+print(mem_top()) #5362
 """before = defaultdict(int)
 after = defaultdict(int)
 for i in get_objects():
@@ -77,35 +77,33 @@ try:
                 # get batch of size 32 from replay memory
                 state_batch, action_batch, reward_batch, next_state_batch, not_done_batch = memory.get_batch()
                 # get qtargets
-                qtarget = agent.getQtargets(next_state_batch, reward_batch, not_done_batch)
+                qtargets = agent.getQtargets(next_state_batch, reward_batch, not_done_batch)
                 # get data that matches qtarget and states to corresponding action 
-                state_batch, qtarget = agent.getTrainingData(state_batch,qtarget,action_batch)
+                state_batch = agent.encode_state(state_batch)
                 # train agent for 1 step
-                agent.train(state_batch, qtarget, 1)
+                agent.train(state_batch, action_batch, batch_size, qtargets)
             
             if agent.training_steps % update_frequency == 0:
                 #start_time = time.monotonic()    
                 agent.updateQTarget()
-                if agent.training_steps % 200000 == 0:
+                """if agent.training_steps % 200000 == 0:
                     nam = 'backup' + str(agent.training_steps)
                     agent.save_agent(nam)
                     memory.save_replay(nam)
                 #end_time = time.monotonic()
-                #print('Block 4 time: ',timedelta(seconds=end_time - start_time))
+                #print('Block 4 time: ',timedelta(seconds=end_time - start_time))"""
             
 
             if agent.training_steps % evaluation_frequency == 0:
                 agent.save_agent(j)
                 j+=1
                 print('Current epsilon: ',agent.epsilon)
-                for i in range(4):
-                    print('Linear weights ' + str(i) + ' sum: ', np.sum(agent.Linear[i].getWeights()['weight'].detach().numpy()))
                 print('Frames = ', agent.training_steps)
                 print('Frames in current session = ', n)
                 print('Number of episodes = ', episodes)
                 print('Number of saved agents = ',j)
                 print('Memory size = ' , len(memory.data))
-                #print(mem_top())
+                print(mem_top())
                  
 
         episodes += 1

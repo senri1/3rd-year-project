@@ -1,12 +1,10 @@
 from collections import deque
-import torch
 import random
 import numpy as np
+import torch 
 import os 
 import pickle
 import time
-import gc
-
 
 class ReplayMemory():
     def __init__(self, size, batch_size):
@@ -19,11 +17,10 @@ class ReplayMemory():
         if self.current_size < self.max_size:
             self.data.append((state, int(action), reward, next_state, not done))
             self.current_size += 1
-        else:
+        else: 
             self.data.popleft()
             self.data.append((state, int(action), reward, next_state, not done))
-            
-
+    
     def get_batch(self):
         batch = random.sample(self.data, self.batch_size)
         batch = np.array(batch)
@@ -41,12 +38,7 @@ class ReplayMemory():
         not_done = torch.from_numpy(batch[:,4].astype(float)).float().to('cuda')
         
         return state, action, reward, next_state, not_done
-
-    def get_big_batch(self,batch_size):
-        batch = random.sample(self.data, batch_size)
-        batch = np.array(batch)
-        return batch
-
+        
     def save_replay(self,j):
         agent_name = 'agent' + str(j)
         dir = 'saved_agents/' + agent_name + '/'
@@ -64,18 +56,19 @@ class ReplayMemory():
             with open(os.getcwd() +'/'+ dir + "mem" + str(i), 'wb') as pfile:
                 pickle.dump(a, pfile, protocol=pickle.HIGHEST_PROTOCOL)
             time.sleep(0.1)
-        
+
+
     def load_replay(self,j):
         agent_name = 'agent' + str(j)
         dir = 'saved_agents/' + agent_name + '/'
-        self.max_size = int(np.load(dir + 'max_size.npy'))
-        self.current_size = np.load(dir + 'current_size.npy')
+        self.max_size = 250000#int(np.load(dir + 'max_size.npy'))
+        self.current_size = 250000#np.load(dir + 'current_size.npy')
         self.data = deque(maxlen=self.max_size)
         for i in range(int(self.current_size/500)):
             print(i)
-            f =  open(os.getcwd() + '/' + dir + "mem" + str(i), "rb")
-            a = pickle.load(f)
-            f.close()
+            with open(os.getcwd() + '/' + dir + "mem" + str(i), "rb") as f:
+                a = pickle.load(f)
             for j in range(a.shape[0]):
-                self.data.append((a[j,:]))
-            time.sleep(0.01)
+                self.data.append(a[j,:])
+            time.sleep(0.1)
+

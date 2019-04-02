@@ -23,10 +23,10 @@ class OLS:
             self.optimizer.step()
 
     def predict(self,X):
-        x = torch.from_numpy(X).float()
+        X = torch.from_numpy(X).float()
         with torch.no_grad():
-            y = self.Linear(x)
-        return float(y[0])
+            X = self.Linear(X)
+        return float(X[0])
 
     def setWeights(self, newWeight):
         self.Linear.load_state_dict(newWeight)

@@ -14,11 +14,12 @@ def evaluate():
     idx = int(np.load('log/idx.npy'))
     env_name = 'Breakout-v0'
 
-    for i in range(242):
+    for i in range(243):
 
         print(i)
+        print(TestAgent.training_steps)
         TestAgent.load_agent(i)
-        evaluation_data.append([ collectMeanScore(TestAgent,25,0.05,env_name), evaluateStateQvalues(TestAgent) ])
+        evaluation_data.append([ TestAgent.training_steps, collectMeanScore(TestAgent,25,0.05,env_name), evaluateStateQvalues(TestAgent) ])
 
     np.savetxt("log/eval_data.csv", evaluation_data, delimiter=",")
 

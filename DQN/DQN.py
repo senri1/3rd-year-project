@@ -11,16 +11,19 @@ from EvaluateAgent import LazyFrame2Torch, collectRandomData, collectMeanScore
 import time
 from datetime import timedelta
 import os
+from mem_top import mem_top
+from collections import defaultdict
+from gc import get_objects
 
 env_name = 'Breakout-v0'
 env = make_atari(env_name)
 env = wrap_deepmind(env)
 
 
-frames = 2000000
+frames = 8000
 episodes = 0
 batch_size = 32
-memory_size = 250000
+memory_size = 1000
 memory_start_size = int(memory_size/20)
 update_frequency = 10000
 evaluation_frequency = frames/250
@@ -39,6 +42,11 @@ print('Evaluation frequency = ' , evaluation_frequency)
 
 n = 0
 j = agent.training_steps
+"""print(mem_top()) #5362
+before = defaultdict(int)
+after = defaultdict(int)
+for i in get_objects():
+    before[type(i)] += 1 """
 
 try:
     while n in range(frames):
@@ -90,6 +98,7 @@ try:
 
 except:
     print('Welp')
+
 
 agent.save_agent('FINAL')
 memory.save_replay('FINAL')
